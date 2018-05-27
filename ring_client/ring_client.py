@@ -1,5 +1,6 @@
 import re
 import socket
+import time
 
 from colour import Color
 
@@ -29,7 +30,7 @@ class RGBWPixel(Color):
         if 0 > value > 1.0:
             raise ValueError('White must be between 0 and 1. You provided {}.'.format(value))
         self._white = value
-    
+
     def get_white(self):
         return self._white
 
@@ -104,11 +105,24 @@ class RingClient(object):
         # is longer thatn the buffer of the receiver.
         self._socket.sendall(raw_data)
     
+    def clear(self):
+        self._pixels = [RGBWPixel() for _ in range(self.num_leds)]
+
     def set_pixel(self, number: int, pixel: RGBWPixel):
         try:
             self._pixels[number] = pixel
         except IndexError as error:
             raise PixelOutOfRangeError() from error
+
+    def benchmark(self, samples=1000):
+        start = time.time()
+        for i in range(samples):
+            self.clear()
+            self.set_pixel(i % self.num_leds, RGBWPixel(white=1))
+            self.show()
+        end = time.time()
+        return samples / (end - start)
+        
 
 
 def main():
@@ -116,11 +130,10 @@ def main():
     print(rc)
     input('connect?')
     rc.connect()
-    input('set?')
-    rc.set_pixel(10, RGBWPixel(white=1.0))
-    rc.set_pixel(11, RGBWPixel(red=1, green=1, blue=1))
-    rc.set_pixel(12, RGBWPixel(red=1, green=1, blue=1, white=1))
-    rc.show()
+    input('benchmark?')
+
+    print('{} frames per second'.format(rc.benchmark()))
+    
     input('disconnect?')
     rc.disconnect()
 
