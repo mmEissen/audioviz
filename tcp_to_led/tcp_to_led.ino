@@ -5,25 +5,13 @@
   #include <avr/power.h>
 #endif
 
-#define DEBUG_MODE 0
+#include "config.h"
+
 #if DEBUG_MODE
   #define DEBUG(MSG) Serial.println(MSG)
 #else
   #define DEBUG(MSG)
 #endif
-
-#define SERIAL_BAUD 9600
-
-#define PIN 2
-#define NUM_LEDS 60
-#define BRIGHTNESS 50
-// 3 for RGB LEDs or 4 for RGBW
-#define NUM_COLORS 4
-#define FRAME_SIZE NUM_COLORS * NUM_LEDS
-
-#define PORT 50000
-#define WIFI_NAME "LED-Ring"
-#define PASSWORD "bottlekeplercompany"
 
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
 
@@ -36,7 +24,6 @@ bool wasConnected;
 void setup() {
   #if DEBUG_MODE
   Serial.begin(SERIAL_BAUD);
-  Serial.println("Start");
   #endif
 
   DEBUG("WiFi starting...");
@@ -46,11 +33,14 @@ void setup() {
   server.begin();
   DEBUG("Server up");
 
+  wasConnected = false;
+
   strip.setBrightness(BRIGHTNESS);
   strip.begin();
-  strip.show();
 
-  wasConnected = false;
+  blink();
+  delay(50);
+  blink();
 }
 
 bool copyLatestFrameFromWiFi() {
@@ -85,11 +75,11 @@ void drawFrame(char* data) {
   int j;
   for(int i = 0; i < NUM_LEDS; ++i) {
     j = i * NUM_COLORS;
-    char r = wiFiFrame[j];
-    char g = wiFiFrame[j + 1];
-    char b = wiFiFrame[j + 2];
+    char r = data[j];
+    char g = data[j + 1];
+    char b = data[j + 2];
     #if NUM_COLORS==4
-    char w = wiFiFrame[j + 3];
+    char w = data[j + 3];
     strip.setPixelColor(i, strip.Color(r, g, b, w));
     #elif NUM_COLORS==3
     strip.setPixelColor(i, strip.Color(r, g, b));
@@ -101,12 +91,28 @@ void drawFrame(char* data) {
   DEBUG("Frame drawn");
 }
 
+void blink() {
+  char data[FRAME_SIZE];
+  for(int i = 0; i < FRAME_SIZE; ++i) {
+    data[i] = 50;
+  }
+  drawFrame(data);
+  for(int i = 0; i < FRAME_SIZE; ++i) {
+    data[i] = 0;
+  }
+  delay(200);
+  drawFrame(data);
+}
+
 void onClientConnect() {
   DEBUG("client connected");
+  blink();
 }
 
 void onClientDisconnect() {
   DEBUG("client disconnected");
+  char empty[FRAME_SIZE] = {0};
+  drawFrame(empty);
 }
 
 void loop() {
