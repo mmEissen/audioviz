@@ -1,6 +1,8 @@
 import re
 import socket
 import time
+import threading
+from collections import deque
 
 from colour import Color
 
@@ -52,7 +54,7 @@ class RingClient(object):
         self.num_leds = num_leds
         self.num_colors = num_colors
         self.frame_size = num_leds * num_colors
-        self._pixels = [RGBWPixel() for _ in range(num_leds)]
+        self._pixels = self.clear_frame()
 
     def __repr__(self):
         return '{}@{}:{}'.format(self.__class__.__name__, self._ring_address, self._port)
@@ -105,8 +107,11 @@ class RingClient(object):
         # is longer thatn the buffer of the receiver.
         self._socket.sendall(raw_data)
     
-    def clear(self):
-        self._pixels = [RGBWPixel() for _ in range(self.num_leds)]
+    def set_frame(self, frame):
+        self._pixels = frame
+    
+    def clear_frame(self):
+        return [RGBWPixel() for _ in range(self.num_leds)]
 
     def set_pixel(self, number: int, pixel: RGBWPixel):
         try:
@@ -117,25 +122,65 @@ class RingClient(object):
     def benchmark(self, samples=1000):
         start = time.time()
         for i in range(samples):
-            self.clear()
+            self._pixels = self.clear_frame()
             self.set_pixel(i % self.num_leds, RGBWPixel(white=1))
             self.show()
         end = time.time()
         return samples / (end - start)
-        
 
+
+class RenderLoop(threading.Thread):
+    frame_buffer_size = 2
+
+    def __init__(self, ring_client, update_fnc, max_framerate=60):
+        super().__init__()
+        self._frame_period = 1 / max_framerate
+        self._update_fnc = update_fnc
+        self._is_running = False
+        self._active_frame_index = 0
+        self._ring_client = ring_client
+        self._frame_buffer = [self._ring_client.clear_frame() for _ in range(self.frame_buffer_size)]
+
+    def _flip_frame(self):
+        self._active_frame_index = (self._active_frame_index + 1) % self.frame_buffer_size
+    
+    def _active_frame(self):
+        return self._frame_buffer[self._active_frame_index]
+    
+    def _inactive_frame(self):
+        return self._frame_buffer[(self._active_frame_index + 1) % self.frame_buffer_size]
+
+    def run(self):
+        self._ring_client.connect()
+        self._is_running = True
+        while self._is_running:
+            draw_start_time = time.time()
+            self._flip_frame()
+            draw_thread = threading.Thread(target=self._update_fnc, args=(self._inactive_frame(), draw_start_time))
+            draw_thread.start()
+            self._ring_client.set_frame(self._active_frame())
+            self._ring_client.show()
+            draw_thread.join()
+            time_to_next_frame = self._frame_period - time.time() + draw_start_time
+            if time_to_next_frame > 0:
+                time.sleep(time_to_next_frame)
+        self._ring_client.disconnect()
+    
+    def stop(self):
+        self._is_running = False
+
+def pulse(frame, now):
+    intensity = now - int(now)
+    for pixel in frame:
+        pixel.set_white(intensity)    
 
 def main():
     rc = RingClient.from_config_header('../tcp_to_led/config.h')
     print(rc)
-    input('connect?')
-    rc.connect()
-    input('benchmark?')
-
-    print('{} frames per second'.format(rc.benchmark()))
-    
-    input('disconnect?')
-    rc.disconnect()
+    render_loop = RenderLoop(rc, pulse)
+    render_loop.start()
+    input('stop?')
+    render_loop.stop()
 
 if __name__ == '__main__':
     main()
