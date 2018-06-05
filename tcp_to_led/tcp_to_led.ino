@@ -1,9 +1,5 @@
 #include <ESP8266WiFi.h>
-#include <Adafruit_NeoPixel.h>
-
-#ifdef __AVR__
-  #include <avr/power.h>
-#endif
+#include <NeoPixelBus.h>
 
 #include "config.h"
 
@@ -13,12 +9,12 @@
   #define DEBUG(MSG)
 #endif
 
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_GRBW + NEO_KHZ800);
+NeoPixelBus<NeoRgbwFeature, Neo800KbpsMethod> strip(NUM_LEDS);
 
 WiFiServer server(PORT);
 WiFiClient client = WiFiClient();
 
-char wiFiFrame[FRAME_SIZE];
+uint8_t wiFiFrame[FRAME_SIZE];
 bool wasConnected;
 
 void setup() {
@@ -35,8 +31,7 @@ void setup() {
 
   wasConnected = false;
 
-  strip.setBrightness(BRIGHTNESS);
-  strip.begin();
+  strip.Begin();
 
   blink();
   delay(50);
@@ -71,28 +66,23 @@ bool copyLatestFrameFromWiFi() {
   return false;
 }
 
-void drawFrame(char* data) {
+void drawFrame(uint8_t* data) {
   int j;
   for(int i = 0; i < NUM_LEDS; ++i) {
     j = i * NUM_COLORS;
-    char r = data[j];
-    char g = data[j + 1];
-    char b = data[j + 2];
-    #if NUM_COLORS==4
-    char w = data[j + 3];
-    strip.setPixelColor(i, strip.Color(r, g, b, w));
-    #elif NUM_COLORS==3
-    strip.setPixelColor(i, strip.Color(r, g, b));
-    #else
-    #error "NUM_COLORS must be 3 or 4!"
-    #endif
+    uint8_t r = data[j];
+    uint8_t g = data[j + 1];
+    uint8_t b = data[j + 2];
+    uint8_t w = data[j + 3];
+    strip.SetPixelColor(i, RgbwColor(r, g, b, w));
   }
-  strip.show();
+  DEBUG("Start strip show");
+  strip.Show();
   DEBUG("Frame drawn");
 }
 
 void blink() {
-  char data[FRAME_SIZE];
+  uint8_t data[FRAME_SIZE];
   for(int i = 0; i < FRAME_SIZE; ++i) {
     data[i] = 50;
   }
@@ -111,7 +101,7 @@ void onClientConnect() {
 
 void onClientDisconnect() {
   DEBUG("client disconnected");
-  char empty[FRAME_SIZE] = {0};
+  uint8_t empty[FRAME_SIZE] = {0};
   drawFrame(empty);
 }
 
