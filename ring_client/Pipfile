@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 colour = "*"
+scipy = "*"
 
 [dev-packages]
 pylint = "*"

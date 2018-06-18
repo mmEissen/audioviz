@@ -41,8 +41,26 @@ class RGBWPixel(Color):
         return round(value * 255)
 
     def to_bytes(self):
-        rgbw = (self.red, self.green, self.blue, self.white)
-        return bytes(map(self._value_to_byte, rgbw))
+        r, g, b, w = self.get_rgbw()
+        return bytes(map(self._value_to_byte, [g, r, b, w]))
+    
+    def set_rgbw(self, rgbw):
+        red, green, blue, white = rgbw
+        self.set_rgb((red, green, blue))
+        self.set_white(white)
+    
+    def get_rgbw(self):
+        red, green, blue = self.get_rgb()
+        return (red, green, blue, self.get_white())
+    
+    def __mul__(self, other):
+        red, green, blue, white = self.get_rgbw()
+        return self.__class__(
+            red=red * other,
+            green=green * other,
+            blue=blue * other,
+            white=white * other,
+        )
 
 
 class RingClient(object):
@@ -104,7 +122,7 @@ class RingClient(object):
             raise NotConnectedError('Client must be connected before calling show()!')
         raw_data = b''.join(pixel.to_bytes() for pixel in self._pixels)
         # With the current implementation of tcp_to_led this might actually deadlock if raw_data
-        # is longer thatn the buffer of the receiver.
+        # is longer than the buffer of the receiver.
         self._socket.sendall(raw_data)
     
     def set_frame(self, frame):
@@ -167,20 +185,4 @@ class RenderLoop(threading.Thread):
         self._ring_client.disconnect()
     
     def stop(self):
-        self._is_running = False
-
-def pulse(frame, now):
-    intensity = now - int(now)
-    for pixel in frame:
-        pixel.set_white(intensity)    
-
-def main():
-    rc = RingClient.from_config_header('../tcp_to_led/config.h')
-    print(rc)
-    render_loop = RenderLoop(rc, pulse)
-    render_loop.start()
-    input('stop?')
-    render_loop.stop()
-
-if __name__ == '__main__':
-    main()
+        self._is_running = False 
