@@ -5,6 +5,7 @@ from itertools import count
 import effects
 from audio_tools import BeatTracker
 from ring_client import RenderLoop, RingClient, RGBWPixel
+from profiler import Profiler
 
 
 class EffectTimeline:
@@ -30,26 +31,47 @@ class EffectTimeline:
             return float('+inf')
         return ending_time
 
-    def _create_combined_effect(self, now):
+    def _active_effects(self, now):
         while self._next_effect_start_time() <= now:
             _, counter, effect = heapq.heappop(self._effects_start_heap)
             heapq.heappush(self._effects_end_heap, (effect.end, counter, effect))
         while self._next_effect_ending_time() < now:
             heapq.heappop(self._effects_end_heap)
-        return effects.MaxEffect([effect for _, _, effect in self._effects_end_heap])
+        return [effect for _, _, effect in self._effects_end_heap]
     
     def _clear_frame_buffer(self, frame_buffer):
         for pixel in frame_buffer:
             pixel.set_rgbw((0, 0, 0, 0))
     
+    @Profiler.profile
     def render(self, frame_buffer, timestamp):
         self._clear_frame_buffer(frame_buffer)
-        combined_effect = self._create_combined_effect(timestamp)
-        combined_effect(frame_buffer, timestamp)
+        for effect in self._active_effects(timestamp):
+            effect(frame_buffer, timestamp)
 
-PULSE_TIME = 0.2
 
-def main():
+
+def pulse_forever(pulse_time=0.1, pulse_spread=0.4):
+    rc = RingClient.from_config_header('../tcp_to_led/config.h')
+    print(rc)
+    effect_timeline = EffectTimeline()
+    render_loop = RenderLoop(rc, effect_timeline.render)
+    render_loop.start()
+
+    now = time.time()
+    for i in range(2000):
+        effect_timeline.add_effect(
+            effects.PulseEffect(
+                now + pulse_spread * i,
+                pulse_time,
+                RGBWPixel(white=1)
+            ),
+        )
+    input('stop?')
+    render_loop.stop()
+
+
+def beat_track(pulse_time=0.1):
     rc = RingClient.from_config_header('../tcp_to_led/config.h')
     print(rc)
     beat_tracker = BeatTracker()
@@ -65,11 +87,15 @@ def main():
         for prediction in predictions:
             if prediction - now < 1 and prediction > fixed_period:
                 effect_timeline.add_effect(
-                    effects.PulseEffect(prediction - PULSE_TIME / 2, PULSE_TIME, RGBWPixel(white=1)),
+                    effects.PulseEffect(prediction - pulse_time / 2, pulse_time, RGBWPixel(white=1)),
                 )
                 fixed_period = prediction + 0.01
-
+        time.sleep(0.1)
+        print(Profiler.report())
     render_loop.stop()
+
+def main():
+    pulse_forever()
 
 if __name__ == '__main__':
     main()

@@ -5,6 +5,7 @@ from scipy.interpolate import interp1d
 from numpy import array
 
 from ring_client import RGBWPixel
+from profiler import Profiler
 
 
 class Effect(ABC):
@@ -71,11 +72,23 @@ class PulseEffect(Effect):
     @property
     def end(self):
         return self._end
+    
+    def _interpolate(self, timestamp):
+        return float(self._interpolation_function(timestamp))
 
+    def _max_rgbw(self, *colors):
+        reds, greens, blues, whites = zip(*(color.get_rgbw() for color in colors))
+        return max(reds), max(greens), max(blues), max(whites)
+
+    @Profiler.profile
+    def _set_frame_buffer(self, frame_buffer, color):
+        for pixel in frame_buffer:
+            pixel.set_rgbw(self._max_rgbw(color, pixel))
+
+    @Profiler.profile
     def render(self, frame_buffer, timestamp):
         if not (self.start < timestamp < self.end):
             return frame_buffer
-        intensity = float(self._interpolation_function(timestamp))
+        intensity = self._interpolate(timestamp)
         color = self._color * intensity
-        for pixel in frame_buffer:
-            pixel.set_rgbw(color.get_rgbw())
+        self._set_frame_buffer(frame_buffer, color)
