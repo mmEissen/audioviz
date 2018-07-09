@@ -3,6 +3,7 @@ import time
 from itertools import count
 
 import effects
+from audio_tools import BeatTracker
 from ring_client import RenderLoop, RingClient, RGBWPixel
 
 
@@ -46,19 +47,28 @@ class EffectTimeline:
         combined_effect = self._create_combined_effect(timestamp)
         combined_effect(frame_buffer, timestamp)
 
+PULSE_TIME = 0.2
 
 def main():
     rc = RingClient.from_config_header('../tcp_to_led/config.h')
     print(rc)
+    beat_tracker = BeatTracker()
+    beat_tracker.start()
     effect_timeline = EffectTimeline()
-    now = time.time()
-    for i in range(1000):
-        effect_timeline.add_effect(effects.PulseEffect(
-            now + 10 * i, 10, RGBWPixel(red=1, green=1, blue=0, white=0),
-        ))
     render_loop = RenderLoop(rc, effect_timeline.render)
     render_loop.start()
-    input('stop?')
+    
+    fixed_period = 0
+    while True:
+        now = time.time()
+        predictions = beat_tracker.get_prediction()
+        for prediction in predictions:
+            if prediction - now < 1 and prediction > fixed_period:
+                effect_timeline.add_effect(
+                    effects.PulseEffect(prediction - PULSE_TIME / 2, PULSE_TIME, RGBWPixel(white=1)),
+                )
+                fixed_period = prediction + 0.01
+
     render_loop.stop()
 
 if __name__ == '__main__':
