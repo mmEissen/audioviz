@@ -63,10 +63,39 @@ class RGBWPixel(Color):
         )
 
 
+class RingDetective(object):
+
+    def __init__(self, port: int):
+        self._socket = None
+        self._port = port
+
+    def _bind_socket(self):
+        try:
+            self._socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        except OSError as error:
+            self._socket = None
+            raise ConnectionError('Error creating socket') from error
+        try:
+            self._socket.bind(('', self._port))
+        except OSError as error:
+            self._socket.close()
+            self._socket = None
+            raise ConnectionError('Error connecting to server') from error
+    
+    def _find_ip(self):
+        message = b''
+        while message != b'LEDRing\n':
+            message, _, _, (ip_address, _) = self._socket.recvmsg(32)
+        return ip_address
+
+    def find_ring_ip(self):
+        self._bind_socket()
+        return self._find_ip()
+                
+
 class RingClient(object):
     
-    def __init__(self, port: int, num_leds: int, num_colors: int, ring_address: str='192.168.4.1'):
-        self._ring_address = ring_address
+    def __init__(self, port: int, num_leds: int, num_colors: int):
         self._port = port
         self._socket = None
         self.num_leds = num_leds
@@ -75,7 +104,7 @@ class RingClient(object):
         self._pixels = self.clear_frame()
 
     def __repr__(self):
-        return '{}@{}:{}'.format(self.__class__.__name__, self._ring_address, self._port)
+        return '{}@{}:{}'.format(self.__class__.__name__, self._port)
 
     @classmethod
     def from_config_header(cls, filename):
@@ -101,13 +130,14 @@ class RingClient(object):
         return self._socket is not None
 
     def connect(self):
+        ring_address = RingDetective(self._port).find_ring_ip()
         try:
             self._socket = socket.socket()
         except OSError as error:
             self._socket = None
             raise ConnectionError('Error creating socket') from error
         try:
-            self._socket.connect((self._ring_address, self._port))
+            self._socket.connect((ring_address, self._port))
         except OSError as error:
             self._socket.close()
             self._socket = None

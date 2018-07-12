@@ -94,8 +94,15 @@ def beat_track(pulse_time=0.1):
         print(Profiler.report())
     render_loop.stop()
 
+def benchmark():
+    rc = RingClient.from_config_header('../tcp_to_led/config.h')
+    rc.connect()
+    print('connected')
+    rc.benchmark()
+    rc.disconnect
+
 def main():
-    pulse_forever()
+    benchmark()
 
 if __name__ == '__main__':
     main()
