@@ -104,7 +104,7 @@ class RingClient(object):
         self._pixels = self.clear_frame()
 
     def __repr__(self):
-        return '{}@{}:{}'.format(self.__class__.__name__, self._port)
+        return '{}@{}'.format(self.__class__.__name__, self._port)
 
     @classmethod
     def from_config_header(cls, filename):

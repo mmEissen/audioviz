@@ -51,7 +51,7 @@ class EffectTimeline:
 
 
 
-def pulse_forever(pulse_time=0.1, pulse_spread=0.4):
+def pulse_forever(pulse_time=0.3, pulse_spread=0.4):
     rc = RingClient.from_config_header('../tcp_to_led/config.h')
     print(rc)
     effect_timeline = EffectTimeline()
@@ -71,7 +71,7 @@ def pulse_forever(pulse_time=0.1, pulse_spread=0.4):
     render_loop.stop()
 
 
-def beat_track(pulse_time=0.1):
+def beat_track(pulse_time=0.3):
     rc = RingClient.from_config_header('../tcp_to_led/config.h')
     print(rc)
     beat_tracker = BeatTracker()
@@ -98,11 +98,13 @@ def benchmark():
     rc = RingClient.from_config_header('../tcp_to_led/config.h')
     rc.connect()
     print('connected')
-    rc.benchmark()
+    print(rc.benchmark())
     rc.disconnect
 
 def main():
-    benchmark()
+    # beat_track()
+    pulse_forever()
+    # benchmark()
 
 if __name__ == '__main__':
     main()

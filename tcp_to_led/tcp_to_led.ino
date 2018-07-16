@@ -17,105 +17,24 @@ WiFiClient client = WiFiClient();
 WiFiUDP udp;
 
 uint8_t wiFiFrame[FRAME_SIZE];
-bool wasConnected;
+unsigned long lastMessage;
+
+enum class State {
+  DISCONNECTED,
+  WIFI_CONNECTED,
+  CLIENT_CONNECTED,
+};
+
+State currentState;
 
 void setup() {
 #if DEBUG_MODE
   Serial.begin(SERIAL_BAUD);
 #endif
 
-  DEBUG("WiFi starting...");
-  WiFi.mode(WIFI_STA);
-
-  // there's a "smart config" in the ESP8266WiFi library that could potentially replace having to hard code
-  // ssid and password 
-  WiFi.begin(WIFI_NAME, PASSWORD);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(100);
-  }
-  auto myIp = WiFi.localIP();
-  DEBUG(myIp);
-  
-  udp.begin(PORT);
-
-  server.begin();
-  DEBUG("Server up");
-
-  wasConnected = false;
-
+  DEBUG("SETUP");
+  currentState = State::DISCONNECTED;
   strip.Begin();
-
-  blink();
-  delay(50);
-  blink();
-}
-
-bool copyLatestFrameFromWiFi() {
-  auto bytesAvailable = client.available();
-
-  // We only want the newest frame. If there is older data available then drop it.
-  while (bytesAvailable >= (2 * FRAME_SIZE)) {
-    for (int i = 0; i < FRAME_SIZE; ++i) {
-      client.read();
-    }
-    bytesAvailable -= FRAME_SIZE;
-    DEBUG("Frame droped!");
-  }
-
-  // There is room for improvement here:
-  // The data is left in the TCP buffer until we have a full frame available. Because the
-  // TCP receive buffer size on the ESP2866 is very limited (I can't find exact figures
-  // but it seems to be around 1500 bytes) this can lead to problems when the frame size
-  // gets close to that number. A better aproach would be to read the data from the buffer
-  // as it arrives to free up the buffer quickly.
-  if (bytesAvailable >= FRAME_SIZE) {
-    for (int i = 0; i < FRAME_SIZE; ++i) {
-      wiFiFrame[i] = client.read();
-    }
-    DEBUG("Frame read");
-    return true;
-  }
-  return false;
-}
-
-void drawFrame(uint8_t* data) {
-  int j;
-  for (int i = 0; i < NUM_LEDS; ++i) {
-    j = i * NUM_COLORS;
-    uint8_t r = data[j];
-    uint8_t g = data[j + 1];
-    uint8_t b = data[j + 2];
-    uint8_t w = data[j + 3];
-    strip.SetPixelColor(i, RgbwColor(r, g, b, w));
-  }
-  DEBUG("Start strip show");
-  strip.Show();
-  DEBUG("Frame drawn");
-}
-
-void blink() {
-  uint8_t data[FRAME_SIZE];
-  for (int i = 0; i < FRAME_SIZE; ++i) {
-    data[i] = 50;
-  }
-  drawFrame(data);
-  for (int i = 0; i < FRAME_SIZE; ++i) {
-    data[i] = 0;
-  }
-  delay(200);
-  drawFrame(data);
-}
-
-void onClientConnect() {
-  DEBUG("client connected");
-  blink();
-}
-
-void onClientDisconnect() {
-  DEBUG("client disconnected");
-  uint8_t empty[FRAME_SIZE] = {0};
-  drawFrame(empty);
 }
 
 void advertise() {
@@ -124,31 +43,137 @@ void advertise() {
   auto subnetMask = WiFi.subnetMask();
   IPAddress subnet(myIp & subnetMask);
   IPAddress broadcast(myIp | ~subnetMask);
-  DEBUG(subnetMask);
-  DEBUG(subnet);
-  DEBUG(broadcast);
   udp.beginPacket(broadcast, PORT);
   udp.write("LEDRing\n", 8);
   udp.endPacket();
 }
 
-void loop() {
-  if (client && client.connected()) {
-    if (!wasConnected) {
-      onClientConnect();
-    }
-    wasConnected = true;
-    if (copyLatestFrameFromWiFi()) {
-      drawFrame(wiFiFrame);
+void connectToWiFi() {
+  WiFi.begin(WIFI_NAME, PASSWORD);
+  int seconds = 0;
+  while (WiFi.status() != WL_CONNECTED && seconds < WAIT_FOR_CONNECTION_SECONDS) {
+    delay(1000);
+    ++seconds;
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    onWiFiConnect();
+  } else {
+    switch (WiFi.status()) {
+      case WL_IDLE_STATUS:
+        DEBUG("WL_IDLE_STATUS"); break;
+      case WL_NO_SHIELD:
+        DEBUG("WL_NO_SHIELD"); break;
+      case WL_NO_SSID_AVAIL:
+        DEBUG("WL_NO_SSID_AVAIL"); break;
+      case WL_SCAN_COMPLETED:
+        DEBUG("WL_SCAN_COMPLETED"); break;
+      case WL_CONNECT_FAILED:
+        DEBUG("WL_CONNECT_FAILED"); break;
+      case WL_CONNECTION_LOST:
+        DEBUG("WL_CONNECTION_LOST"); break;
+      case WL_DISCONNECTED:
+        DEBUG("WL_DISCONNECTED"); break;
     }
   }
-  else {
-    if (wasConnected) {
-      onClientDisconnect();
-    }
-    wasConnected = false;
-    advertise();
-    delay(100);
-    client = server.available();
+}
+
+void onWiFiConnect() {
+  currentState = State::WIFI_CONNECTED;
+  DEBUG("WiFi connected.");
+  DEBUG(WiFi.localIP());
+  udp.begin(PORT);
+  server.begin();
+}
+
+void onWiFiDisconnect() {
+  currentState = State::DISCONNECTED;
+  DEBUG("WiFi disconnected.");
+}
+
+void connectToClient() {
+  if (WiFi.status() != WL_CONNECTED) {
+    onWiFiDisconnect();
+    return;
+  }
+  advertise();
+  delay(100);
+  client = server.available();
+  if (client && client.connected()) {
+    onClientConnect();
+  }
+}
+
+void onClientConnect() {
+  currentState = State::CLIENT_CONNECTED;
+  DEBUG("client connected");
+  lastMessage = millis();
+}
+
+void onClientDisconnect() {
+  currentState = State::WIFI_CONNECTED;
+  DEBUG("client disconnected");
+  strip.ClearTo(RgbwColor(0));
+  strip.Show();
+}
+
+void checkMessages() {
+  if (!client || !client.connected()) {
+    onClientDisconnect();
+  }
+  auto available = udp.parsePacket();
+  if (available == PACKET_SIZE) {
+    readMessage();
+  } else {
+    discardMessage();
+  }
+}
+
+void discardMessage() {
+  while (udp.available()) {
+    udp.read();
+  }
+}
+
+void readMessage() {
+  uint32_t frameNumber = 0;
+
+  for (int i = 0; i < FRAME_NUMBER_BYTES; ++i) {
+    frameNumber = frameNumber << 8;
+    frameNumber += udp.read();
+  }
+
+  if (frameNumber == KEEPALIVE_FRAME_NUMBER) {
+    discardMessage();
+    return;
+  }
+
+  udp.read(strip.Pixels(), FRAME_SIZE);
+  strip.Dirty();
+  strip.Show();
+
+  sendFrameNumber(frameNumber);
+}
+
+void sendFrameNumber(uint32_t number) {
+  udp.beginPacket(udp.remoteIP(), udp.remotePort());
+  for (int i = 0; i < FRAME_NUMBER_BYTES; ++i) {
+    char nextChar = static_cast<char>(number);
+    udp.write(nextChar);
+    number = number >> 8;
+  }
+  udp.endPacket();
+}
+
+void loop() {
+  switch (currentState) {
+    case State::DISCONNECTED:
+      connectToWiFi();
+      break;
+    case State::WIFI_CONNECTED:
+      connectToClient();
+      break;
+    case State::CLIENT_CONNECTED:
+      checkMessages();
+      break;
   }
 }
