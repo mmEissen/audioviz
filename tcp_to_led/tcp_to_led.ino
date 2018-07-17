@@ -116,15 +116,42 @@ void onClientDisconnect() {
   strip.Show();
 }
 
+bool isTimedOut() {
+  // has to handle overflow of millis
+
+  auto now = millis();
+
+  auto backwardThreshold = now - TIMEOUT_MILLISECONDS;
+  auto forwardThreshold = lastMessage + TIMEOUT_MILLISECONDS;
+
+  if (forwardThreshold < now && backwardThreshold >= lastMessage) {
+    return true;
+  }
+  if (forwardThreshold >= now && backwardThreshold < lastMessage) {
+    return false;
+  }
+  return now < lastMessage;
+}
+
+bool isClientConnected() {
+  return client && client.connected();
+}
+
 void checkMessages() {
-  if (!client || !client.connected()) {
+  if (!isClientConnected()) {
     onClientDisconnect();
   }
   auto available = udp.parsePacket();
   if (available == PACKET_SIZE) {
+    lastMessage = millis();
     readMessage();
   } else {
     discardMessage();
+  }
+  if(isTimedOut()) {
+    DEBUG("Client timed out");
+    client.flush();
+    client.stop();
   }
 }
 
@@ -135,6 +162,7 @@ void discardMessage() {
 }
 
 void readMessage() {
+  DEBUG("Message received");
   uint32_t frameNumber = 0;
 
   for (int i = 0; i < FRAME_NUMBER_BYTES; ++i) {
@@ -143,6 +171,7 @@ void readMessage() {
   }
 
   if (frameNumber == KEEPALIVE_FRAME_NUMBER) {
+    DEBUG("Ignoring keepalive message");
     discardMessage();
     return;
   }
