@@ -1,8 +1,10 @@
+import abc
 import math
 import struct
 import threading
 import time
 from collections import deque
+from typing import Iterable, Tuple
 
 import alsaaudio as alsa
 import librosa
@@ -13,23 +15,50 @@ MS_IN_SECOND = 1000
 SECONDS_IN_MINUTE = 60
 
 
-class AudioInput(threading.Thread):
+class AbstractAudioInput(abc.ABC):
     number_channels = 1
 
     def __init__(
         self,
-        device='default',
-        sample_rate=44100,
-        period_size=512,
-        buffer_size=MS_IN_SECOND * 10
-    ):
+        device: str='default',
+        sample_rate: int=44100,
+        period_size: int=512,
+        buffer_size: int=MS_IN_SECOND * 10
+    ) -> None:
         self.sample_rate = sample_rate
         self.period = sample_rate / period_size * MS_IN_SECOND
         self.sample_delta = 1 / sample_rate
+
+    def _buffer(self) -> Iterable[Tuple[int, float]]:
+        pass
+
+    def has_data(self) -> bool:
+        return bool(self._buffer)
+    
+    def start(self):
+        pass
+
+    def run(self):
+        pass
+
+    def stop(self):
+        pass
+
+
+class AudioInput(threading.Thread, AbstractAudioInput):
+
+    def __init__(
+        self,
+        device: str='default',
+        sample_rate: int=44100,
+        period_size: int=512,
+        buffer_size: int=MS_IN_SECOND * 10
+    ) -> None:
+        super().__init__(device, sample_rate, period_size, buffer_size)
         self._is_running = False
 
         max_buffered_samples = buffer_size * sample_rate // MS_IN_SECOND
-        self._buffer = deque(maxlen=max_buffered_samples)
+        self._buffer: Iterable[Tuple[int, float]] = deque(maxlen=max_buffered_samples)
         self._buffer_lock = threading.Lock()
 
         self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
@@ -38,9 +67,8 @@ class AudioInput(threading.Thread):
         self._mic.setformat(alsa.PCM_FORMAT_FLOAT_BE)
         self._mic.setchannels(self.number_channels)
 
-        super().__init__()
 
-    def _audio_loop(self):
+    def _audio_loop(self) -> None:
         length, raw_data = self._mic.read()
 
         # working with timestamps here to keep types in the buffer immutable
@@ -56,10 +84,7 @@ class AudioInput(threading.Thread):
         self._buffer.extend(data_with_times)
         self._buffer_lock.release()
 
-    def has_data(self):
-        return bool(self._buffer)
-
-    def copy_data(self):
+    def copy_data(self) -> Iterable[Tuple[int, float]]:
         self._buffer_lock.acquire()
         buffer_copy = self._buffer.copy()
         self._buffer_lock.release()

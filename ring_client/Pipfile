@@ -9,9 +9,12 @@ scipy = "*"
 numpy = "*"
 pyalsaaudio = "*"
 librosa = "*"
+"pyqt5" = "*"
 
 [dev-packages]
 pylint = "*"
+pytest = "*"
+mypy = "*"
 
 [requires]
 python_version = "3.6"

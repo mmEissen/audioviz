@@ -1,8 +1,10 @@
+import abc
 import re
 import socket
 import time
 import threading
 from collections import deque
+import typing as t
 
 from colour import Color
 
@@ -91,28 +93,55 @@ class RingDetective(object):
     def find_ring_ip(self):
         self._bind_socket()
         return self._find_ip()
-                
 
-class RingClient(object):
-    
-    def __init__(self, port: int, num_leds: int, num_colors: int):
-        self._port = port
-        self._socket = None
+
+class AbstractClient(abc.ABC):
+    def __init__(self, num_leds: int, num_colors: int) -> None:
         self.num_leds = num_leds
         self.num_colors = num_colors
         self.frame_size = num_leds * num_colors
         self._pixels = self.clear_frame()
 
-    def __repr__(self):
-        return '{}@{}'.format(self.__class__.__name__, self._port)
+    def __repr__(self) -> str:
+        return '{}<{}X{}>'.format(self.__class__.__name__, self.num_colors, self.num_leds)
+
+    def set_frame(self, frame: t.List[RGBWPixel]) -> None:
+        self._pixels = frame
+    
+    def clear_frame(self) -> t.List[RGBWPixel]:
+        return [RGBWPixel() for _ in range(self.num_leds)]
+    
+    @abc.abstractmethod
+    def connect(self) -> None:
+        pass
+    
+    @abc.abstractmethod
+    def disconnect(self) -> None:
+        pass
+    
+    @abc.abstractmethod
+    def show(self) -> None:
+        pass
+    
+    @abc.abstractmethod
+    def is_connected(self) -> bool:
+        pass
+
+
+class RingClient(AbstractClient):
+    
+    def __init__(self, port: int, num_leds: int, num_colors: int) -> None:
+        super().__init__(num_leds, num_colors)
+        self._port = port
+        self._socket = None
 
     @classmethod
-    def from_config_header(cls, filename):
+    def from_config_header(cls, filename: str) -> 'RingClient':
         define_statement = re.compile(r'#define\W+(?P<name>\w+) (?P<value>.*)\n')
         with open(filename) as config_file:
             config_content = config_file.read()
         defines = dict(define_statement.findall(config_content))
-        def _get_define(name):
+        def _get_define(name: str) -> int:
             try:
                 return int(defines[name])
             except KeyError as exception:
@@ -126,10 +155,10 @@ class RingClient(object):
 
         return cls(port, num_leds, num_colors)
 
-    def is_connected(self):
+    def is_connected(self) -> bool:
         return self._socket is not None
 
-    def connect(self):
+    def connect(self)-> None:
         ring_address = RingDetective(self._port).find_ring_ip()
         try:
             self._socket = socket.socket()
@@ -143,72 +172,37 @@ class RingClient(object):
             self._socket = None
             raise ConnectionError('Error connecting to server') from error
     
-    def disconnect(self):
+    def disconnect(self) -> None:
         if self.is_connected():
             self._socket.close()
     
-    def show(self):
+    def show(self) -> None:
         if not self.is_connected():
             raise NotConnectedError('Client must be connected before calling show()!')
         raw_data = b''.join(pixel.to_bytes() for pixel in self._pixels)
         # With the current implementation of tcp_to_led this might actually deadlock if raw_data
         # is longer than the buffer of the receiver.
         self._socket.sendall(raw_data)
-    
-    def set_frame(self, frame):
-        self._pixels = frame
-    
-    def clear_frame(self):
-        return [RGBWPixel() for _ in range(self.num_leds)]
-
-    def set_pixel(self, number: int, pixel: RGBWPixel):
-        try:
-            self._pixels[number] = pixel
-        except IndexError as error:
-            raise PixelOutOfRangeError() from error
-
-    def benchmark(self, samples=1000):
-        start = time.time()
-        for i in range(samples):
-            self._pixels = self.clear_frame()
-            self.set_pixel(i % self.num_leds, RGBWPixel(white=1))
-            self.show()
-        end = time.time()
-        return samples / (end - start)
 
 
 class RenderLoop(threading.Thread):
     frame_buffer_size = 2
 
-    def __init__(self, ring_client, update_fnc, max_framerate=30):
+    def __init__(self, ring_client, update_fnc, max_framerate=60):
         super().__init__()
         self._frame_period = 1 / max_framerate
         self._update_fnc = update_fnc
         self._is_running = False
-        self._active_frame_index = 0
         self._ring_client = ring_client
-        self._frame_buffer = [self._ring_client.clear_frame() for _ in range(self.frame_buffer_size)]
-
-    def _flip_frame(self):
-        self._active_frame_index = (self._active_frame_index + 1) % self.frame_buffer_size
-    
-    def _active_frame(self):
-        return self._frame_buffer[self._active_frame_index]
-    
-    def _inactive_frame(self):
-        return self._frame_buffer[(self._active_frame_index + 1) % self.frame_buffer_size]
 
     def run(self):
         self._ring_client.connect()
         self._is_running = True
         while self._is_running:
             draw_start_time = time.time()
-            self._flip_frame()
-            draw_thread = threading.Thread(target=self._update_fnc, args=(self._inactive_frame(), draw_start_time))
-            draw_thread.start()
-            self._ring_client.set_frame(self._active_frame())
+            new_frame = self._update_fnc(draw_start_time)
+            self._ring_client.set_frame(new_frame)
             self._ring_client.show()
-            draw_thread.join()
             time_to_next_frame = self._frame_period - time.time() + draw_start_time
             if time_to_next_frame > 0:
                 time.sleep(time_to_next_frame)
