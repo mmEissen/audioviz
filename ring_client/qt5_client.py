@@ -8,9 +8,9 @@ from PyQt5.QtWidgets import QWidget
 
 
 class LedRingWidget(QWidget):
-    _radius = 200
+    _radius = 300
     _led_radius = 10
-    _size = _radius * 2 + _led_radius
+    _size = _radius * 2 + _led_radius * 2
 
     def __init__(self, num_leds: int) -> None:
         super().__init__()
@@ -27,9 +27,12 @@ class LedRingWidget(QWidget):
         painter.setPen(QPen(Qt.NoPen))
 
         center = QPointF(0, self._radius)
+        rect_size = 2 * self._led_radius + 4
         angle = 360 / self.num_leds
 
         for color in self.colors:
+            painter.setBrush(QColor())
+            painter.drawRect(-rect_size / 2, self._radius + rect_size / 2, rect_size, -rect_size)
             painter.setBrush(color)
             painter.drawEllipse(center, self._led_radius, self._led_radius)
             painter.rotate(angle)
