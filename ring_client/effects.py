@@ -1,94 +1,114 @@
-from abc import ABC, abstractmethod, abstractproperty
-from typing import List
+from itertools import count
 
-from scipy.interpolate import interp1d
-from numpy import array
+import numpy as np
+from numpy.fft import fft as fourier_transform, fftfreq
+from scipy.stats import binned_statistic, circmean
 
-from ring_client import RGBWPixel
-from profiler import Profiler
+from audio_tools import AbstractAudioInput
+from ring_client import AbstractClient
 
 
-class Effect(ABC):
-    @abstractproperty
-    def start(self):
-        return 0
+class FancyColor:
+    def __init__(self, hue, brightness=1):
+        self.hue = hue
+        self.brightness = brightness
     
-    @abstractproperty
-    def end(self):
-        return float('+inf')
+    def _hue_mean(self, other):
+        return circmean(
+            [self.hue] * self.brightness + [other.hue] * other.brightness,
+            high=1,
+        )
 
-    @abstractmethod
-    def render(self, frame_buffer, timestamp):
-        pass 
-
-    def __call__(self, frame_buffer, timestamp):
-        self.render(frame_buffer, timestamp)
-
-
-class MaxEffect(Effect):
-    def __init__(self, effects: List[Effect]):
-        self._effects = effects
-    
-    @property
-    def start(self):
-        return min(effect.start for effect in self._effects)
-
-    @property
-    def end(self):
-        return max(effect.end for effect in self._effects)
-
-    def _max_rgbw(self, colors):
-        reds, greens, blues, whites = zip(*(color.get_rgbw() for color in colors))
-        return max(reds), max(greens), max(blues), max(whites)
-
-    def render(self, frame_buffer, timestamp):
-        frame_buffers = [
-            [RGBWPixel() for pixel in frame_buffer]
-            for effect in self._effects
-        ]
-        for effect, effect_frame_buffer in zip(self._effects, frame_buffers):
-            effect(effect_frame_buffer, timestamp)
-        color_columns = zip(*frame_buffers)
-        for pixel, colors in zip(frame_buffer, color_columns):
-            pixel.set_rgbw(self._max_rgbw(colors))
-
-
-class PulseEffect(Effect):
-    def __init__(self, start, length, color, interpolation='cubic'):
-        self._start = start
-        self._length = length
-        self._end = start + length
-        self._color = color
-        self._interpolation_function = interp1d(
-            array([self.start - 1, self.start, self.start + self._length / 2, self.end, self.end + 1]),
-            array([0, 0, 1, 0, 0]),
-            kind=interpolation,
+    def __add__(self, other):
+        return self.__class__(
+            self._hue_mean(other),
+            brightness=self.brightness + other.brightness
         )
     
-    @property
-    def start(self):
-        return self._start
+    def __iadd__(self, other):
+        self.hue = self._hue_mean(other)
+        self.brightness += other.brightness
+        return self
     
-    @property
-    def end(self):
-        return self._end
-    
-    def _interpolate(self, timestamp):
-        return float(self._interpolation_function(timestamp))
+    def to_hsl(self):
+        return (self.hue, 1, 1 - 1 / 2 ** self.brightness)
 
-    def _max_rgbw(self, *colors):
-        reds, greens, blues, whites = zip(*(color.get_rgbw() for color in colors))
-        return max(reds), max(greens), max(blues), max(whites)
 
-    @Profiler.profile
-    def _set_frame_buffer(self, frame_buffer, color):
-        for pixel in frame_buffer:
-            pixel.set_rgbw(self._max_rgbw(color, pixel))
+class FourierEffect:
+    _max_frequency = 20000
+    _bins_per_octave = 360
 
-    @Profiler.profile
-    def render(self, frame_buffer, timestamp):
-        if not (self.start < timestamp < self.end):
-            return frame_buffer
-        intensity = self._interpolate(timestamp)
-        color = self._color * intensity
-        self._set_frame_buffer(frame_buffer, color)
+    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
+        self._ring_client = ring_client
+        self._audio_input = audio_input
+        self._audio_input.start()
+        self._window_size = window_size
+        self._fourier_frequencies = fftfreq(
+            self._audio_input.seconds_to_samples(window_size),
+            d=self._audio_input.sample_delta,
+        )
+        self._bins = np.array(list(self._bin_generator()))
+        number_bins = self._bins.shape[0] - 1
+        number_zero_bins = (self._bins_per_octave - number_bins) % self._bins_per_octave
+        self._zero_bins = np.zeros(number_zero_bins)
+        # If there are zero bins then we have an additional octave
+        self._octaves = number_bins // self._bins_per_octave + bool(number_zero_bins)
+        self._hanning_window = np.hanning(self._audio_input.seconds_to_samples(window_size))
+
+    def __call__(self, timestamp):
+        data = np.array(self._audio_input.get_data(length=self._window_size))
+        normalized_data = np.clip(
+            data / 800,
+            -1,
+            1,
+        )
+        harmonic_bins = self._harmonic_fourier_bins(normalized_data)
+
+        colors = [FancyColor(0, brightness=0) for _ in range(self._ring_client.num_leds)]
+        for bin_number, amplitude in enumerate(harmonic_bins):
+            color = FancyColor(bin_number / self._bins_per_octave)
+            num_leds = int(self._ring_client.num_leds * amplitude)
+            for i in range(num_leds):
+                colors[i] += color
+
+        frame = self._ring_client.clear_frame()
+        for pixel, color in zip(frame, colors):
+            pixel.set_hsl(color.to_hsl())
+
+        return frame
+
+    def _harmonic_fourier_bins(self, audio_data):
+        fourier_data = np.absolute(
+            fourier_transform(
+                np.multiply(
+                    audio_data,
+                    self._hanning_window,
+                ),
+            ),
+        )
+        binned_frequencies = np.append(
+            np.nan_to_num(
+                binned_statistic(
+                    self._fourier_frequencies,
+                    fourier_data,
+                    statistic='max',
+                    bins=self._bins,
+                ).statistic,
+                copy=False,
+            ),
+            self._zero_bins,
+        )
+        return np.maximum.reduce(
+            np.reshape(
+                binned_frequencies,
+                (-1, self._bins_per_octave),
+            ),
+        )
+
+    def _bin_generator(self):
+        x_values = count(0)
+        for x in x_values:
+            next_value = 2 ** (x / self._bins_per_octave)
+            yield next_value
+            if next_value > self._max_frequency:
+                return

@@ -7,16 +7,10 @@ if USE_MOCK:
     from PyQt5.QtWidgets import QApplication
     import qt5_client
 
+import audio_tools
 import ring_client
+from effects import FourierEffect
 
-
-class Pulse:
-    def __init__(self, num_leds: int) -> None:
-        self._num_leds = num_leds
-
-    def __call__(self, timestamp: float) -> t.List[ring_client.RGBWPixel]:
-        intensity = (timestamp % 5) / 5
-        return [ring_client.RGBWPixel(red=intensity, green=intensity, blue=intensity) for _ in range(self._num_leds)]
 
 
 def qtmock_client_and_wait():
@@ -42,7 +36,10 @@ def main() -> None:
     else:
         client, wait = client_and_wait()
     
-    loop = ring_client.RenderLoop(client, Pulse(60))
+    audio_input = audio_tools.AudioInput()
+    render_func = FourierEffect(audio_input, client)
+
+    loop = ring_client.RenderLoop(client, render_func)
     loop.start()
 
     return_code = wait()
