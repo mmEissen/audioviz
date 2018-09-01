@@ -6,7 +6,7 @@ from numpy.fft import fft as fourier_transform, fftfreq
 from scipy.stats import binned_statistic, circmean
 
 from audio_tools import AbstractAudioInput
-from ring_client import AbstractClient, RGBWPixel
+from ring_client import AbstractClient, Pixel
 from profiler import Profiler
 
 class FancyColor:
@@ -143,10 +143,10 @@ class CircularFourierEffect(FourierEffect):
 
     @Profiler.profile
     def _convert_bins(self, bins):
-        return [RGBWPixel(red=amp, green=amp, blue=amp) for amp in bins]
+        return [Pixel(amp, amp, amp) for amp in bins]
 
     @Profiler.profile
-    def __call__(self, timestamp: float) -> t.List[RGBWPixel]:
+    def __call__(self, timestamp: float) -> t.List[Pixel]:
         harmonic_bins = self._harmonic_bins_from_input()
         return self._convert_bins(harmonic_bins)
         

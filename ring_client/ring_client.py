@@ -6,7 +6,7 @@ import threading
 from collections import deque
 import typing as t
 
-from colour import Color
+import numpy as np
 from profiler import Profiler
 
 
@@ -22,48 +22,24 @@ class NotConnectedError(Exception):
 class PixelOutOfRangeError(IndexError):
     pass
 
-class RGBWPixel(Color):
-    _white = 0
 
-    def __setattr__(self, label, value):
-        if label.startswith('_'):
-            self.__dict__[label] = value
-        else:
-            super().__setattr__(label, value)
+class Pixel():
+    _percieved_luminance = np.array([
+        0.2126, 0.7152, 0.0722,
+    ])
 
-    def set_white(self, value):
-        if 0 > value > 1.0:
-            raise ValueError('White must be between 0 and 1. You provided {}.'.format(value))
-        self._white = value
-
-    def get_white(self):
-        return self._white
-
-    @staticmethod
-    def _value_to_byte(value):
-        return round(value * 255)
-
-    def to_bytes(self):
-        r, g, b, w = self.get_rgbw()
-        return bytes(map(self._value_to_byte, [g, r, b, w]))
-    
-    def set_rgbw(self, rgbw):
-        red, green, blue, white = rgbw
-        self.set_rgb((red, green, blue))
-        self.set_white(white)
+    def __init__(self, red, green, blue) -> None:
+        self._values = np.array((red, green, blue))
     
     def get_rgbw(self):
-        red, green, blue = self.get_rgb()
-        return (red, green, blue, self.get_white())
-    
-    def __mul__(self, other):
-        red, green, blue, white = self.get_rgbw()
-        return self.__class__(
-            red=red * other,
-            green=green * other,
-            blue=blue * other,
-            white=white * other,
-        )
+        # For now just r, g, b, 0. this should however be based on percieved luminance
+        return np.append(self._values, [0])
+
+    def get_rgb(self):
+        return self._values * 255
+
+    def to_bytes(self):
+        return bytes(round(c) for c in (self.get_rgbw() * 255))
 
 
 class RingDetective(object):
@@ -106,11 +82,11 @@ class AbstractClient(abc.ABC):
     def __repr__(self) -> str:
         return '{}<{}X{}>'.format(self.__class__.__name__, self.num_colors, self.num_leds)
 
-    def set_frame(self, frame: t.List[RGBWPixel]) -> None:
+    def set_frame(self, frame: t.List[Pixel]) -> None:
         self._pixels = frame
     
-    def clear_frame(self) -> t.List[RGBWPixel]:
-        return [RGBWPixel() for _ in range(self.num_leds)]
+    def clear_frame(self) -> t.List[Pixel]:
+        return [Pixel(0, 0, 0) for _ in range(self.num_leds)]
     
     @abc.abstractmethod
     def connect(self) -> None:
