@@ -1,3 +1,4 @@
+import typing as t
 from itertools import count
 
 import numpy as np
@@ -5,8 +6,8 @@ from numpy.fft import fft as fourier_transform, fftfreq
 from scipy.stats import binned_statistic, circmean
 
 from audio_tools import AbstractAudioInput
-from ring_client import AbstractClient
-
+from ring_client import AbstractClient, RGBWPixel
+from profiler import Profiler
 
 class FancyColor:
     def __init__(self, hue, brightness=1):
@@ -38,7 +39,7 @@ class FourierEffect:
     _max_frequency = 20000
     _bins_per_octave = 7
 
-    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
+    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.001):
         self._ring_client = ring_client
         self._audio_input = audio_input
         self._audio_input.start()
@@ -56,13 +57,7 @@ class FourierEffect:
         self._hanning_window = np.hanning(self._audio_input.seconds_to_samples(window_size))
 
     def __call__(self, timestamp):
-        data = np.array(self._audio_input.get_data(length=self._window_size))
-        normalized_data = np.clip(
-            data / 800,
-            -1,
-            1,
-        )
-        harmonic_bins = self._harmonic_fourier_bins(normalized_data)
+        harmonic_bins = self._harmonic_bins_from_input()
 
         quarter_frame = self._ring_client.num_leds // 4
 
@@ -85,8 +80,19 @@ class FourierEffect:
                 pixel.set_hsl(color.to_hsl())
 
         return frame
+    
+    @Profiler.profile
+    def _harmonic_bins_from_input(self):
+        data = np.array(self._audio_input.get_data(length=self._window_size))
+        normalized_data = np.clip(
+            data / 400,
+            -1,
+            1,
+        )
+        return self._harmonic_fourier_bins(normalized_data)
 
-    def _harmonic_fourier_bins(self, audio_data):
+    @Profiler.profile
+    def _binned_frequencies(self, audio_data):
         fourier_data = np.absolute(
             fourier_transform(
                 np.multiply(
@@ -96,22 +102,29 @@ class FourierEffect:
             ),
         )
         binned_frequencies = np.append(
-            np.nan_to_num(
-                binned_statistic(
-                    self._fourier_frequencies,
-                    fourier_data,
-                    statistic='max',
-                    bins=self._bins,
-                ).statistic,
-                copy=False,
+            np.clip(
+                np.nan_to_num(
+                    binned_statistic(
+                        self._fourier_frequencies,
+                        fourier_data,
+                        statistic='max',
+                        bins=self._bins,
+                    ).statistic,
+                    copy=False,
+                ),
+                0,
+                1,
             ),
             self._zero_bins,
         )
+        return np.reshape(
+            binned_frequencies,
+            (-1, self._bins_per_octave),
+        )
+
+    def _harmonic_fourier_bins(self, audio_data):
         return np.maximum.reduce(
-            np.reshape(
-                binned_frequencies,
-                (-1, self._bins_per_octave),
-            ),
+            self._binned_frequencies(audio_data),
         )
 
     def _bin_generator(self):
@@ -121,3 +134,28 @@ class FourierEffect:
             yield next_value
             if next_value > self._max_frequency:
                 return
+
+class CircularFourierEffect(FourierEffect):
+
+    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
+        self._bins_per_octave = ring_client.num_leds
+        super().__init__(audio_input, ring_client, window_size=0.05)
+
+    @Profiler.profile
+    def _convert_bins(self, bins):
+        return [RGBWPixel(red=amp, green=amp, blue=amp) for amp in bins]
+
+    @Profiler.profile
+    def __call__(self, timestamp: float) -> t.List[RGBWPixel]:
+        harmonic_bins = self._harmonic_bins_from_input()
+        return self._convert_bins(harmonic_bins)
+        
+    def _gaussian_window(self, offset: float, sigma: float=0.05):
+        def f(x: float, mu: float=0.5) -> float:
+            return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sigma, 2.)))
+        
+        offset -= 0.5
+
+        return np.array(
+            [f(x % 1) for x in np.linspace(offset, offset + 1, num=self._ring_client.num_leds, endpoint=False)],
+        )

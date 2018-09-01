@@ -10,7 +10,6 @@ import alsaaudio as alsa
 import librosa
 import numpy
 
-
 MS_IN_SECOND = 1000
 SECONDS_IN_MINUTE = 60
 

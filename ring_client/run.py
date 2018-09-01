@@ -9,8 +9,8 @@ if USE_MOCK:
 
 import audio_tools
 import ring_client
-from effects import FourierEffect
-
+from effects import CircularFourierEffect
+from profiler import Profiler
 
 
 def qtmock_client_and_wait():
@@ -37,7 +37,7 @@ def main() -> None:
         client, wait = client_and_wait()
     
     audio_input = audio_tools.AudioInput()
-    render_func = FourierEffect(audio_input, client)
+    render_func = CircularFourierEffect(audio_input, client)
 
     loop = ring_client.RenderLoop(client, render_func)
     loop.start()

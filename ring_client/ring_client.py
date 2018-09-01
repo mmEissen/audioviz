@@ -7,6 +7,7 @@ from collections import deque
 import typing as t
 
 from colour import Color
+from profiler import Profiler
 
 
 class InvalidConfigHeaderError(Exception):
@@ -188,12 +189,13 @@ class RingClient(AbstractClient):
 class RenderLoop(threading.Thread):
     frame_buffer_size = 2
 
-    def __init__(self, ring_client, update_fnc, max_framerate=60):
+    def __init__(self, ring_client, update_fnc, max_framerate=120):
         super().__init__()
         self._frame_period = 1 / max_framerate
         self._update_fnc = update_fnc
         self._is_running = False
         self._ring_client = ring_client
+        self._last_report = 0
 
     def run(self):
         self._ring_client.connect()
@@ -203,6 +205,9 @@ class RenderLoop(threading.Thread):
             new_frame = self._update_fnc(draw_start_time)
             self._ring_client.set_frame(new_frame)
             self._ring_client.show()
+            if draw_start_time - self._last_report > 5:
+                self._last_report = draw_start_time
+                print(Profiler.report(), end='\n\n')
             time_to_next_frame = self._frame_period - time.time() + draw_start_time
             if time_to_next_frame > 0:
                 time.sleep(time_to_next_frame)
