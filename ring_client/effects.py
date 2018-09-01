@@ -36,7 +36,7 @@ class FancyColor:
 
 class FourierEffect:
     _max_frequency = 20000
-    _bins_per_octave = 360
+    _bins_per_octave = 7
 
     def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
         self._ring_client = ring_client
@@ -64,16 +64,25 @@ class FourierEffect:
         )
         harmonic_bins = self._harmonic_fourier_bins(normalized_data)
 
-        colors = [FancyColor(0, brightness=0) for _ in range(self._ring_client.num_leds)]
+        quarter_frame = self._ring_client.num_leds // 4
+
+        colors = [FancyColor(0, brightness=0) for _ in range(quarter_frame)]
         for bin_number, amplitude in enumerate(harmonic_bins):
             color = FancyColor(bin_number / self._bins_per_octave)
-            num_leds = int(self._ring_client.num_leds * amplitude)
+            num_leds = int(len(colors) * amplitude)
             for i in range(num_leds):
                 colors[i] += color
 
         frame = self._ring_client.clear_frame()
-        for pixel, color in zip(frame, colors):
-            pixel.set_hsl(color.to_hsl())
+        quarters = zip(
+            reversed(frame[0:quarter_frame]),
+            frame[quarter_frame:2 * quarter_frame],
+            reversed(frame[2 * quarter_frame:3 * quarter_frame]),
+            frame[3 * quarter_frame:],
+        )
+        for pixels_to_set, color in zip(quarters, colors):
+            for pixel in pixels_to_set:
+                pixel.set_hsl(color.to_hsl())
 
         return frame
 
