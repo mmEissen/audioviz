@@ -1,10 +1,13 @@
-import ring_client
 import typing as t
 from threading import Thread
 
 from PyQt5.QtCore import Qt, QPointF
 from PyQt5.QtGui import QPainter, QPen, QColor
 from PyQt5.QtWidgets import QWidget
+import numpy as np
+
+import ring_client
+import audio_tools
 
 
 class LedRingWidget(QWidget):
@@ -59,4 +62,26 @@ class Qt5RingClient(ring_client.AbstractClient):
         self._main_widget.colors = [QColor(*pixel.get_rgb()) for pixel in self._pixels]
         self._main_widget.update()
 
+
+class MockSinInput(audio_tools.AbstractAudioInput):
+    _frequency = 440
+    _amplitude = 50
+
+    def __init__(
+        self,
+        sample_rate: int=88200,
+        period_size: int=64,
+        buffer_size: int=audio_tools.MS_IN_SECOND * 10
+    ) -> None:
+        super().__init__(sample_rate, period_size, buffer_size)
     
+    def start(self):
+        pass
+    
+    def stop(self):
+        pass
+    
+    def get_samples(self, num_samples: int) -> t.Iterable[float]:
+        return np.sin(
+            np.linspace(0, num_samples / self.sample_rate, num_samples) * np.pi * 2 * self._frequency
+        ) * self._amplitude

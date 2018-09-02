@@ -36,7 +36,10 @@ def main() -> None:
     else:
         client, wait = client_and_wait()
     
-    audio_input = audio_tools.AudioInput()
+    if False:
+        audio_input = qt5_client.MockSinInput()
+    else:
+        audio_input = audio_tools.AudioInput()
     render_func = CircularFourierEffect(audio_input, client)
 
     loop = ring_client.RenderLoop(client, render_func)

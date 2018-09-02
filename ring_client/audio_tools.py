@@ -39,8 +39,12 @@ class AbstractAudioInput(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_data(self, length: float=0) -> Iterable[float]:
+    def get_samples(self, num_samples: int) -> Iterable[float]:
         pass
+
+    def get_data(self, length: float=0) -> Iterable[float]:
+        num_samples = self.seconds_to_samples(length)
+        return self.get_samples(num_samples)
 
 
 class AudioInput(AbstractAudioInput):
@@ -86,8 +90,7 @@ class AudioInput(AbstractAudioInput):
     def stop(self):
         self._is_running = False
     
-    def get_data(self, length: float=0) -> Iterable[float]:
-        num_samples = self.seconds_to_samples(length)
+    def get_samples(self, num_samples: int) -> Iterable[float]:
         self._buffer_lock.acquire()
         buffer_copy = [sample for _, sample in zip(range(num_samples), reversed(self._buffer))]
         self._buffer_lock.release()

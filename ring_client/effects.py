@@ -2,7 +2,7 @@ import typing as t
 from itertools import count
 
 import numpy as np
-from numpy.fft import fft as fourier_transform, fftfreq
+from numpy.fft import rfft as fourier_transform, rfftfreq
 from scipy.stats import binned_statistic, circmean
 
 from audio_tools import AbstractAudioInput
@@ -35,127 +35,106 @@ class FancyColor:
         return (self.hue, 1, 1 - 1 / 2 ** self.brightness)
 
 
-class FourierEffect:
-    _max_frequency = 20000
-    _bins_per_octave = 7
+class ContiniousVolumeNormalizer:
+    def __init__(
+        self,
+        min_threshold=0.1,
+        falloff=16,
+    ) -> None:
+        self._min_threshold = min_threshold
+        self._falloff = falloff
+        self._current_threshold = self._min_threshold
+        self._last_call = 0
+    
+    def _update_threshold(self, max_sample, timestamp):
+        self._last_call = timestamp
+        if max_sample >= self._current_threshold:
+            self._current_threshold = max_sample
+            return
+        max_sample = max(max_sample, self._min_threshold)
+        factor = 1 / self._falloff ** (timestamp - self._last_call)
+        self._current_threshold = self._current_threshold * factor + max_sample * (1 - factor)
 
-    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.001):
+    def normalize(self, signal, timestamp):
+        max_sample = np.max(np.abs(signal))
+        self._update_threshold(max_sample, timestamp)
+        return signal / self._current_threshold
+
+
+
+class FourierEffect:
+    _octaves = 12
+
+    def __init__(
+        self, 
+        audio_input: AbstractAudioInput, 
+        ring_client: AbstractClient, 
+        window_size=0.05,
+        volume_threshold=2,
+    ):
         self._ring_client = ring_client
         self._audio_input = audio_input
         self._audio_input.start()
         self._window_size = window_size
-        self._fourier_frequencies = fftfreq(
+        self._fourier_frequencies = rfftfreq(
             self._audio_input.seconds_to_samples(window_size),
             d=self._audio_input.sample_delta,
         )
-        self._bins = np.array(list(self._bin_generator()))
-        number_bins = self._bins.shape[0] - 1
-        number_zero_bins = (self._bins_per_octave - number_bins) % self._bins_per_octave
-        self._zero_bins = np.zeros(number_zero_bins)
-        # If there are zero bins then we have an additional octave
-        self._octaves = number_bins // self._bins_per_octave + bool(number_zero_bins)
         self._hanning_window = np.hanning(self._audio_input.seconds_to_samples(window_size))
-
-    def __call__(self, timestamp):
-        harmonic_bins = self._harmonic_bins_from_input()
-
-        quarter_frame = self._ring_client.num_leds // 4
-
-        colors = [FancyColor(0, brightness=0) for _ in range(quarter_frame)]
-        for bin_number, amplitude in enumerate(harmonic_bins):
-            color = FancyColor(bin_number / self._bins_per_octave)
-            num_leds = int(len(colors) * amplitude)
-            for i in range(num_leds):
-                colors[i] += color
-
-        frame = self._ring_client.clear_frame()
-        quarters = zip(
-            reversed(frame[0:quarter_frame]),
-            frame[quarter_frame:2 * quarter_frame],
-            reversed(frame[2 * quarter_frame:3 * quarter_frame]),
-            frame[3 * quarter_frame:],
-        )
-        for pixels_to_set, color in zip(quarters, colors):
-            for pixel in pixels_to_set:
-                pixel.set_hsl(color.to_hsl())
-
-        return frame
+        self._signal_normalizer = ContiniousVolumeNormalizer()
     
-    @Profiler.profile
-    def _harmonic_bins_from_input(self):
+    def _normalized_audio(self, timestamp):
         data = np.array(self._audio_input.get_data(length=self._window_size))
-        normalized_data = np.clip(
-            data / 400,
-            -1,
-            1,
+        normalized_data = self._signal_normalizer.normalize(
+            data,
+            timestamp,
         )
-        return self._harmonic_fourier_bins(normalized_data)
+        return normalized_data
 
     @Profiler.profile
-    def _binned_frequencies(self, audio_data):
+    def _frequencies(self, audio_data):
         fourier_data = np.absolute(
             fourier_transform(
                 np.multiply(
                     audio_data,
                     self._hanning_window,
                 ),
+                # audio_data,
             ),
-        )
-        binned_frequencies = np.append(
-            np.clip(
-                np.nan_to_num(
-                    binned_statistic(
-                        self._fourier_frequencies,
-                        fourier_data,
-                        statistic='max',
-                        bins=self._bins,
-                    ).statistic,
-                    copy=False,
-                ),
-                0,
-                1,
-            ),
-            self._zero_bins,
-        )
-        return np.reshape(
-            binned_frequencies,
-            (-1, self._bins_per_octave),
-        )
+        ) / (self._window_size * self._audio_input.sample_rate / 4)
+        return np.clip(fourier_data, 0, 1)
 
-    def _harmonic_fourier_bins(self, audio_data):
-        return np.maximum.reduce(
-            self._binned_frequencies(audio_data),
-        )
-
-    def _bin_generator(self):
-        x_values = count(0)
-        for x in x_values:
-            next_value = 2 ** (x / self._bins_per_octave)
-            yield next_value
-            if next_value > self._max_frequency:
-                return
 
 class CircularFourierEffect(FourierEffect):
 
-    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
+    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.01):
         self._bins_per_octave = ring_client.num_leds
-        super().__init__(audio_input, ring_client, window_size=0.05)
+        super().__init__(audio_input, ring_client, window_size=window_size)
 
-    @Profiler.profile
     def _convert_bins(self, bins):
         return [Pixel(amp, amp, amp) for amp in bins]
 
+    def _sample_points(self):
+        return np.exp2(
+            (
+                np.arange(
+                    self._ring_client.num_leds * self._octaves,
+                ) + self._ring_client.num_leds * 4
+            ) / self._ring_client.num_leds,
+        )
+
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
-        harmonic_bins = self._harmonic_bins_from_input()
-        return self._convert_bins(harmonic_bins)
-        
-    def _gaussian_window(self, offset: float, sigma: float=0.05):
-        def f(x: float, mu: float=0.5) -> float:
-            return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sigma, 2.)))
-        
-        offset -= 0.5
-
-        return np.array(
-            [f(x % 1) for x in np.linspace(offset, offset + 1, num=self._ring_client.num_leds, endpoint=False)],
+        audio = np.array(self._audio_input.get_data(length=self._window_size))
+        sample_points = self._sample_points()
+        frequencies = self._frequencies(audio)
+        samples = np.interp(
+            sample_points,
+            self._fourier_frequencies,
+            frequencies,
         )
+        wrapped_data = np.maximum.reduce(
+            np.reshape(samples, (-1, self._ring_client.num_leds)),
+        )
+        normalized_wrapped_data = self._signal_normalizer.normalize(wrapped_data, timestamp)
+        return self._convert_bins(normalized_wrapped_data)

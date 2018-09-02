@@ -173,20 +173,24 @@ class RenderLoop(threading.Thread):
         self._ring_client = ring_client
         self._last_report = 0
 
+    @Profiler.profile
+    def _loop(self):
+        draw_start_time = time.time()
+        new_frame = self._update_fnc(draw_start_time)
+        self._ring_client.set_frame(new_frame)
+        self._ring_client.show()
+        if draw_start_time - self._last_report > 5:
+            self._last_report = draw_start_time
+            print(Profiler.report(), end='\n\n')
+        time_to_next_frame = self._frame_period - time.time() + draw_start_time
+        if time_to_next_frame > 0:
+            time.sleep(time_to_next_frame)
+
     def run(self):
         self._ring_client.connect()
         self._is_running = True
         while self._is_running:
-            draw_start_time = time.time()
-            new_frame = self._update_fnc(draw_start_time)
-            self._ring_client.set_frame(new_frame)
-            self._ring_client.show()
-            if draw_start_time - self._last_report > 5:
-                self._last_report = draw_start_time
-                print(Profiler.report(), end='\n\n')
-            time_to_next_frame = self._frame_period - time.time() + draw_start_time
-            if time_to_next_frame > 0:
-                time.sleep(time_to_next_frame)
+            self._loop()
         self._ring_client.disconnect()
     
     def stop(self):
