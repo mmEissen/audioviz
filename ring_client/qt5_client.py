@@ -64,7 +64,7 @@ class Qt5RingClient(ring_client.AbstractClient):
 
 
 class MockSinInput(audio_tools.AbstractAudioInput):
-    _frequency = 440
+    _frequency = 440 * 2 ** 0
     _amplitude = 50
 
     def __init__(

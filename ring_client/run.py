@@ -36,7 +36,7 @@ def main() -> None:
     else:
         client, wait = client_and_wait()
     
-    if False:
+    if USE_MOCK and False:
         audio_input = qt5_client.MockSinInput()
     else:
         audio_input = audio_tools.AudioInput()

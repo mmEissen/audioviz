@@ -38,8 +38,8 @@ class FancyColor:
 class ContiniousVolumeNormalizer:
     def __init__(
         self,
-        min_threshold=0.1,
-        falloff=16,
+        min_threshold=0.001,
+        falloff=2,
     ) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
@@ -55,6 +55,7 @@ class ContiniousVolumeNormalizer:
         factor = 1 / self._falloff ** (timestamp - self._last_call)
         self._current_threshold = self._current_threshold * factor + max_sample * (1 - factor)
 
+    @Profiler.profile
     def normalize(self, signal, timestamp):
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
@@ -107,13 +108,14 @@ class FourierEffect:
 
 class CircularFourierEffect(FourierEffect):
 
-    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.01):
+    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
         self._bins_per_octave = ring_client.num_leds
         super().__init__(audio_input, ring_client, window_size=window_size)
 
     def _convert_bins(self, bins):
         return [Pixel(amp, amp, amp) for amp in bins]
 
+    @Profiler.profile
     def _sample_points(self):
         return np.exp2(
             (
@@ -125,7 +127,10 @@ class CircularFourierEffect(FourierEffect):
 
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
-        audio = np.array(self._audio_input.get_data(length=self._window_size))
+        audio = self._signal_normalizer.normalize(
+            np.array(self._audio_input.get_data(length=self._window_size)),
+            timestamp,
+        )
         sample_points = self._sample_points()
         frequencies = self._frequencies(audio)
         samples = np.interp(
@@ -136,5 +141,5 @@ class CircularFourierEffect(FourierEffect):
         wrapped_data = np.maximum.reduce(
             np.reshape(samples, (-1, self._ring_client.num_leds)),
         )
-        normalized_wrapped_data = self._signal_normalizer.normalize(wrapped_data, timestamp)
-        return self._convert_bins(normalized_wrapped_data)
+        # normalized_wrapped_data = self._signal_normalizer.normalize(wrapped_data, timestamp)
+        return self._convert_bins(wrapped_data)
