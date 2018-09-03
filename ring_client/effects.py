@@ -2,6 +2,7 @@ import typing as t
 from itertools import count
 
 import numpy as np
+import librosa
 from numpy.fft import rfft as fourier_transform, rfftfreq
 from scipy.stats import binned_statistic, circmean
 
@@ -38,8 +39,8 @@ class FancyColor:
 class ContiniousVolumeNormalizer:
     def __init__(
         self,
-        min_threshold=0.001,
-        falloff=2,
+        min_threshold=0.000001,
+        falloff=4,
     ) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
@@ -62,17 +63,11 @@ class ContiniousVolumeNormalizer:
         return signal / self._current_threshold
 
 
-
-class FourierEffect:
+class CircularFourierEffect:
     _octaves = 12
 
-    def __init__(
-        self, 
-        audio_input: AbstractAudioInput, 
-        ring_client: AbstractClient, 
-        window_size=0.05,
-        volume_threshold=2,
-    ):
+    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
+        self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
         self._audio_input = audio_input
         self._audio_input.start()
@@ -81,16 +76,14 @@ class FourierEffect:
             self._audio_input.seconds_to_samples(window_size),
             d=self._audio_input.sample_delta,
         )
+        self._a_weighting = librosa.db_to_amplitude(
+            librosa.A_weighting(self._fourier_frequencies, min_db=None),
+        )
         self._hanning_window = np.hanning(self._audio_input.seconds_to_samples(window_size))
         self._signal_normalizer = ContiniousVolumeNormalizer()
-    
-    def _normalized_audio(self, timestamp):
-        data = np.array(self._audio_input.get_data(length=self._window_size))
-        normalized_data = self._signal_normalizer.normalize(
-            data,
-            timestamp,
-        )
-        return normalized_data
+
+    def _convert_bins(self, bins):
+        return [Pixel(amp, amp, amp) for amp in bins]
 
     @Profiler.profile
     def _frequencies(self, audio_data):
@@ -105,16 +98,6 @@ class FourierEffect:
         ) / (self._window_size * self._audio_input.sample_rate / 4)
         return np.clip(fourier_data, 0, 1)
 
-
-class CircularFourierEffect(FourierEffect):
-
-    def __init__(self, audio_input: AbstractAudioInput, ring_client: AbstractClient, window_size=0.05):
-        self._bins_per_octave = ring_client.num_leds
-        super().__init__(audio_input, ring_client, window_size=window_size)
-
-    def _convert_bins(self, bins):
-        return [Pixel(amp, amp, amp) for amp in bins]
-
     @Profiler.profile
     def _sample_points(self):
         return np.exp2(
@@ -127,12 +110,12 @@ class CircularFourierEffect(FourierEffect):
 
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
-        audio = self._signal_normalizer.normalize(
-            np.array(self._audio_input.get_data(length=self._window_size)),
+        audio = np.array(self._audio_input.get_data(length=self._window_size))
+        sample_points = self._sample_points()
+        frequencies = self._signal_normalizer.normalize(
+            self._frequencies(audio) * self._a_weighting,
             timestamp,
         )
-        sample_points = self._sample_points()
-        frequencies = self._frequencies(audio)
         samples = np.interp(
             sample_points,
             self._fourier_frequencies,
@@ -141,5 +124,4 @@ class CircularFourierEffect(FourierEffect):
         wrapped_data = np.maximum.reduce(
             np.reshape(samples, (-1, self._ring_client.num_leds)),
         )
-        # normalized_wrapped_data = self._signal_normalizer.normalize(wrapped_data, timestamp)
         return self._convert_bins(wrapped_data)
