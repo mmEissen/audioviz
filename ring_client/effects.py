@@ -39,8 +39,8 @@ class FancyColor:
 class ContiniousVolumeNormalizer:
     def __init__(
         self,
-        min_threshold=0.000001,
-        falloff=4,
+        min_threshold=0.0001,
+        falloff=1.25,
     ) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
@@ -48,13 +48,13 @@ class ContiniousVolumeNormalizer:
         self._last_call = 0
     
     def _update_threshold(self, max_sample, timestamp):
-        self._last_call = timestamp
         if max_sample >= self._current_threshold:
             self._current_threshold = max_sample
-            return
-        max_sample = max(max_sample, self._min_threshold)
-        factor = 1 / self._falloff ** (timestamp - self._last_call)
-        self._current_threshold = self._current_threshold * factor + max_sample * (1 - factor)
+        else:
+            max_sample = max(max_sample, self._min_threshold)
+            factor = 1 / self._falloff ** (timestamp - self._last_call)
+            self._current_threshold = self._current_threshold * factor + max_sample * (1 - factor)
+        self._last_call = timestamp
 
     @Profiler.profile
     def normalize(self, signal, timestamp):
@@ -87,7 +87,7 @@ class CircularFourierEffect:
 
     @Profiler.profile
     def _frequencies(self, audio_data):
-        fourier_data = np.absolute(
+        return np.absolute(
             fourier_transform(
                 np.multiply(
                     audio_data,
@@ -95,8 +95,7 @@ class CircularFourierEffect:
                 ),
                 # audio_data,
             ),
-        ) / (self._window_size * self._audio_input.sample_rate / 4)
-        return np.clip(fourier_data, 0, 1)
+        )
 
     @Profiler.profile
     def _sample_points(self):
@@ -124,4 +123,4 @@ class CircularFourierEffect:
         wrapped_data = np.maximum.reduce(
             np.reshape(samples, (-1, self._ring_client.num_leds)),
         )
-        return self._convert_bins(wrapped_data)
+        return self._convert_bins(wrapped_data ** 2)

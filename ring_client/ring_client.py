@@ -31,15 +31,18 @@ class Pixel():
     def __init__(self, red, green, blue) -> None:
         self._values = np.array((red, green, blue))
     
+    def __repr__(self) -> str:
+        return '<{}:{}>'.format(self.__class__.__name__, self.get_rgbw())
+
     def get_rgbw(self):
         # For now just r, g, b, 0. this should however be based on percieved luminance
-        return np.append(self._values, [0])
+        return np.append(self._values, [0]) * 255
 
     def get_rgb(self):
         return self._values * 255
 
     def to_bytes(self):
-        return bytes(round(c) for c in (self.get_rgbw() * 255))
+        return bytes(round(float(c)) for c in self.get_rgbw())
 
 
 class RingDetective(object):
@@ -107,10 +110,19 @@ class AbstractClient(abc.ABC):
 
 class RingClient(AbstractClient):
     
-    def __init__(self, port: int, num_leds: int, num_colors: int) -> None:
+    def __init__(
+        self,
+        port: int,
+        num_leds: int,
+        num_colors: int,
+        frame_number_bytes: int,
+    ) -> None:
         super().__init__(num_leds, num_colors)
         self._port = port
-        self._socket = None
+        self._ring_address = None
+        self._tcp_socket = None
+        self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._frame_number_bytes = frame_number_bytes
 
     @classmethod
     def from_config_header(cls, filename: str) -> 'RingClient':
@@ -129,37 +141,39 @@ class RingClient(AbstractClient):
         port = _get_define('PORT')
         num_leds = _get_define('NUM_LEDS')
         num_colors = _get_define('NUM_COLORS')
+        frame_number_bytes = _get_define('FRAME_NUMBER_BYTES')
 
-        return cls(port, num_leds, num_colors)
+        return cls(port, num_leds, num_colors, frame_number_bytes)
 
     def is_connected(self) -> bool:
-        return self._socket is not None
+        return self._tcp_socket is not None
 
     def connect(self)-> None:
-        ring_address = RingDetective(self._port).find_ring_ip()
+        self._ring_address = RingDetective(self._port).find_ring_ip()
         try:
-            self._socket = socket.socket()
+            self._tcp_socket = socket.socket()
         except OSError as error:
-            self._socket = None
+            self._tcp_socket = None
             raise ConnectionError('Error creating socket') from error
         try:
-            self._socket.connect((ring_address, self._port))
+            self._tcp_socket.connect((self._ring_address, self._port))
         except OSError as error:
-            self._socket.close()
-            self._socket = None
+            self._tcp_socket.close()
+            self._tcp_socket = None
             raise ConnectionError('Error connecting to server') from error
     
     def disconnect(self) -> None:
         if self.is_connected():
-            self._socket.close()
+            self._tcp_socket.close()
     
     def show(self) -> None:
         if not self.is_connected():
             raise NotConnectedError('Client must be connected before calling show()!')
-        raw_data = b''.join(pixel.to_bytes() for pixel in self._pixels)
-        # With the current implementation of tcp_to_led this might actually deadlock if raw_data
-        # is longer than the buffer of the receiver.
-        self._socket.sendall(raw_data)
+        raw_data = (
+            bytes([0] * self._frame_number_bytes) + 
+            b''.join(pixel.to_bytes() for pixel in self._pixels)
+        )
+        self._udp_socket.sendto(raw_data, (self._ring_address, self._port))
 
 
 class RenderLoop(threading.Thread):

@@ -140,6 +140,7 @@ bool isClientConnected() {
 void checkMessages() {
   if (!isClientConnected()) {
     onClientDisconnect();
+    return;
   }
   auto available = udp.parsePacket();
   if (available == PACKET_SIZE) {
@@ -152,6 +153,7 @@ void checkMessages() {
     DEBUG("Client timed out");
     client.flush();
     client.stop();
+    client = WiFiClient();
   }
 }
 
