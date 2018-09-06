@@ -10,30 +10,6 @@ from audio_tools import AbstractAudioInput
 from ring_client import AbstractClient, Pixel
 from profiler import Profiler
 
-class FancyColor:
-    def __init__(self, hue, brightness=1):
-        self.hue = hue
-        self.brightness = brightness
-    
-    def _hue_mean(self, other):
-        return circmean(
-            [self.hue] * self.brightness + [other.hue] * other.brightness,
-            high=1,
-        )
-
-    def __add__(self, other):
-        return self.__class__(
-            self._hue_mean(other),
-            brightness=self.brightness + other.brightness
-        )
-    
-    def __iadd__(self, other):
-        self.hue = self._hue_mean(other)
-        self.brightness += other.brightness
-        return self
-    
-    def to_hsl(self):
-        return (self.hue, 1, 1 - 1 / 2 ** self.brightness)
 
 
 class ContiniousVolumeNormalizer:
