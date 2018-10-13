@@ -6,8 +6,8 @@ from PyQt5.QtGui import QPainter, QPen, QColor
 from PyQt5.QtWidgets import QWidget
 import numpy as np
 
-import ring_client
-import audio_tools
+from . import ring_client
+from . import audio_tools
 
 
 class LedRingWidget(QWidget):
@@ -21,7 +21,7 @@ class LedRingWidget(QWidget):
         self.setAutoFillBackground(True)
         self.resize(self._size, self._size)
         self.colors = [QColor() for _ in range(num_leds)]
-    
+
     def paintEvent(self, event):
         painter = QPainter()
         painter.begin(self)
@@ -35,7 +35,9 @@ class LedRingWidget(QWidget):
 
         for color in self.colors:
             painter.setBrush(QColor())
-            painter.drawRect(-rect_size / 2, self._radius + rect_size / 2, rect_size, -rect_size)
+            painter.drawRect(
+                -rect_size / 2, self._radius + rect_size / 2, rect_size, -rect_size
+            )
             painter.setBrush(color)
             painter.drawEllipse(center, self._led_radius, self._led_radius)
             painter.rotate(angle)
@@ -44,20 +46,19 @@ class LedRingWidget(QWidget):
 
 
 class Qt5RingClient(ring_client.AbstractClient):
-
     def __init__(self, num_leds: int, num_colors: int) -> None:
         super().__init__(num_leds, num_colors)
         self._main_widget = LedRingWidget(num_leds)
-    
+
     def connect(self) -> None:
         self._main_widget.show()
-    
+
     def disconnect(self) -> None:
         self._main_widget.close()
-    
+
     def is_connected(self) -> bool:
         return not self._main_widget.isHidden()
-    
+
     def show(self) -> None:
         self._main_widget.colors = [QColor(*pixel.get_rgb()) for pixel in self._pixels]
         self._main_widget.update()
@@ -69,19 +70,25 @@ class MockSinInput(audio_tools.AbstractAudioInput):
 
     def __init__(
         self,
-        sample_rate: int=88200,
-        period_size: int=64,
-        buffer_size: int=audio_tools.MS_IN_SECOND * 10
+        sample_rate: int = 88200,
+        period_size: int = 64,
+        buffer_size: int = audio_tools.MS_IN_SECOND * 10,
     ) -> None:
         super().__init__(sample_rate, period_size, buffer_size)
-    
+
     def start(self):
         pass
-    
+
     def stop(self):
         pass
-    
+
     def get_samples(self, num_samples: int) -> t.Iterable[float]:
-        return np.sin(
-            np.linspace(0, num_samples / self.sample_rate, num_samples) * np.pi * 2 * self._frequency
-        ) * self._amplitude
+        return (
+            np.sin(
+                np.linspace(0, num_samples / self.sample_rate, num_samples)
+                * np.pi
+                * 2
+                * self._frequency
+            )
+            * self._amplitude
+        )

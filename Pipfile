@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-colour = "*"
 scipy = "*"
 numpy = "*"
 pyalsaaudio = "*"
@@ -15,6 +14,7 @@ librosa = "*"
 pylint = "*"
 pytest = "*"
 mypy = "*"
+black = "*"
 
 [requires]
-python_version = "3.6"
+python_version = "3.7"
