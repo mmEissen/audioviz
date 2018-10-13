@@ -44,7 +44,7 @@ class CircularFourierEffect:
         audio_input: AbstractAudioInput,
         ring_client: AbstractClient,
         window_size=0.05,
-    ):
+    ) -> None:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
         self._audio_input = audio_input

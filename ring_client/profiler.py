@@ -1,9 +1,10 @@
 import time
+import typing as t
 from collections import deque
 
 
 class Profiler:
-    _times = {}
+    _times: t.Dict[str, t.Tuple[t.Any, ...]] = {}
 
     @classmethod
     def profile(cls, function):

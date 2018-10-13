@@ -4,7 +4,7 @@ import struct
 import threading
 import time
 from collections import deque
-from typing import Iterable, Tuple
+import typing as t
 
 import alsaaudio as alsa
 import librosa
@@ -39,10 +39,10 @@ class AbstractAudioInput(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_samples(self, num_samples: int) -> Iterable[float]:
+    def get_samples(self, num_samples: int) -> t.Iterable[float]:
         pass
 
-    def get_data(self, length: float = 0) -> Iterable[float]:
+    def get_data(self, length: float = 0) -> t.Iterable[float]:
         num_samples = self.seconds_to_samples(length)
         return self.get_samples(num_samples)
 
@@ -91,7 +91,7 @@ class AudioInput(AbstractAudioInput):
     def stop(self):
         self._is_running = False
 
-    def get_samples(self, num_samples: int) -> Iterable[float]:
+    def get_samples(self, num_samples: int) -> t.Iterable[float]:
         self._buffer_lock.acquire()
         buffer_copy = [
             sample for _, sample in zip(range(num_samples), reversed(self._buffer))

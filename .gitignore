@@ -1,3 +1,4 @@
 .vscode
 __pycache__
 ring_client/tests/audio_samples/
+.mypy_cache

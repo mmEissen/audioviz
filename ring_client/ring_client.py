@@ -54,7 +54,7 @@ class Pixel:
 
 
 class RingDetective(object):
-    def __init__(self, port: int):
+    def __init__(self, port: int) -> None:
         self._socket = None
         self._port = port
 
@@ -124,7 +124,7 @@ class RingClient(AbstractClient):
         super().__init__(num_leds, num_colors)
         self._port = port
         self._ring_address = None
-        self._tcp_socket = None
+        self._tcp_socket: t.Optional[socket.socket] = None
         self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._frame_number_bytes = frame_number_bytes
 
@@ -173,6 +173,7 @@ class RingClient(AbstractClient):
 
     def disconnect(self) -> None:
         if self.is_connected():
+            self._tcp_socket = t.cast(socket.socket, self._tcp_socket)
             self._tcp_socket.close()
 
     def show(self) -> None:

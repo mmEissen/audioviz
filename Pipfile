@@ -11,7 +11,6 @@ librosa = "*"
 "pyqt5" = "*"
 
 [dev-packages]
-pylint = "*"
 pytest = "*"
 mypy = "*"
 black = "*"
