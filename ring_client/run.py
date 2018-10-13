@@ -2,15 +2,15 @@ import typing as t
 import sys
 import os
 
-USE_MOCK = bool(os.environ.get("RING_QTMOCK_CLIENT"))
-if USE_MOCK:
+import audio_tools
+import config
+import ring_client
+from effects import CircularFourierEffect
+from profiler import Profiler
+
+if config.MOCK_RING:
     from PyQt5.QtWidgets import QApplication
     import qt5_client
-
-from . import audio_tools
-from . import ring_client
-from .effects import CircularFourierEffect
-from .profiler import Profiler
 
 
 def qtmock_client_and_wait():
@@ -33,15 +33,16 @@ def client_and_wait():
 
 
 def main() -> None:
-    if USE_MOCK:
+    if config.MOCK_RING:
         client, wait = qtmock_client_and_wait()
     else:
         client, wait = client_and_wait()
 
-    if USE_MOCK and False:
+    if config.MOCK_AUDIO:
         audio_input = qt5_client.MockSinInput()
     else:
         audio_input = audio_tools.AudioInput()
+
     render_func = CircularFourierEffect(audio_input, client)
 
     loop = ring_client.RenderLoop(client, render_func)

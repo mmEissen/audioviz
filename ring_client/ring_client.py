@@ -8,8 +8,8 @@ import typing as t
 
 import numpy as np
 
-from .profiler import Profiler
-from . import gamma_table
+from profiler import Profiler
+import gamma_table
 
 
 class InvalidConfigHeaderError(Exception):

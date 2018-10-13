@@ -6,8 +6,8 @@ from PyQt5.QtGui import QPainter, QPen, QColor
 from PyQt5.QtWidgets import QWidget
 import numpy as np
 
-from . import ring_client
-from . import audio_tools
+import ring_client
+import audio_tools
 
 
 class LedRingWidget(QWidget):
