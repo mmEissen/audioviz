@@ -8,7 +8,7 @@ import ring_client
 from effects import CircularFourierEffect
 from profiler import Profiler
 
-if config.MOCK_RING:
+if config.MOCK_RING or config.MOCK_AUDIO:
     from PyQt5.QtWidgets import QApplication
     import qt5_client
 
