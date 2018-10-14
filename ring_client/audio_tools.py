@@ -21,7 +21,7 @@ class AbstractAudioInput(abc.ABC):
         self,
         sample_rate: int = 44100,
         period_size: int = 512,
-        buffer_size: int = MS_IN_SECOND * 10,
+        buffer_size: int = MS_IN_SECOND * 1,
     ) -> None:
         self.sample_rate = sample_rate
         self.period = sample_rate / period_size * MS_IN_SECOND
@@ -52,8 +52,8 @@ class AudioInput(AbstractAudioInput):
         self,
         device: str = "default",
         sample_rate: int = 44100,
-        period_size: int = 64,
-        buffer_size: int = MS_IN_SECOND * 10,
+        period_size: int = 512,
+        buffer_size: int = MS_IN_SECOND * 1,
     ) -> None:
         super().__init__(sample_rate, period_size, buffer_size)
         self._is_running = False

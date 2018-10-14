@@ -1,3 +1,4 @@
+import functools
 import time
 import typing as t
 from collections import deque
@@ -11,6 +12,7 @@ class Profiler:
         full_name = function.__module__ + "." + function.__qualname__
         cls._times[full_name] = deque()
 
+        @functools.wraps(function)
         def decorated_function(*args, **kwargs):
             start = time.time()
             result = function(*args, **kwargs)

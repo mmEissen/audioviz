@@ -65,13 +65,13 @@ class Qt5RingClient(ring_client.AbstractClient):
 
 
 class MockSinInput(audio_tools.AbstractAudioInput):
-    _frequency = 440 * 2 ** 0
+    _frequency = 536
     _amplitude = 50
 
     def __init__(
         self,
-        sample_rate: int = 88200,
-        period_size: int = 64,
+        sample_rate: int = 44100,
+        period_size: int = 512,
         buffer_size: int = audio_tools.MS_IN_SECOND * 10,
     ) -> None:
         super().__init__(sample_rate, period_size, buffer_size)

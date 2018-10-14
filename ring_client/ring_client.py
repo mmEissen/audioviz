@@ -32,8 +32,6 @@ class Pixel:
     # taken from https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
     _gamma_table = gamma_table.gamma_table
 
-    _percieved_luminance = np.array([0.2126, 0.7152, 0.0722])
-
     def __init__(self, red, green, blue) -> None:
         self._values = np.array((red, green, blue))
 

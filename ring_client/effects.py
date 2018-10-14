@@ -12,7 +12,7 @@ from profiler import Profiler
 
 
 class ContiniousVolumeNormalizer:
-    def __init__(self, min_threshold=0.0001, falloff=1.25) -> None:
+    def __init__(self, min_threshold=0.0001, falloff=2) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
@@ -43,7 +43,7 @@ class CircularFourierEffect:
         self,
         audio_input: AbstractAudioInput,
         ring_client: AbstractClient,
-        window_size=0.05,
+        window_size=0.04,
     ) -> None:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
@@ -54,8 +54,15 @@ class CircularFourierEffect:
             self._audio_input.seconds_to_samples(window_size),
             d=self._audio_input.sample_delta,
         )
+        self._sample_points = np.exp2(
+            (
+                np.arange(self._ring_client.num_leds * self._octaves)
+                + self._ring_client.num_leds * 4
+            )
+            / self._ring_client.num_leds
+        )
         self._a_weighting = librosa.db_to_amplitude(
-            librosa.A_weighting(self._fourier_frequencies, min_db=None)
+            librosa.A_weighting(self._sample_points, min_db=None)
         )
         self._hanning_window = np.hanning(
             self._audio_input.seconds_to_samples(window_size)
@@ -69,30 +76,19 @@ class CircularFourierEffect:
     def _frequencies(self, audio_data):
         return np.absolute(
             fourier_transform(
-                np.multiply(audio_data, self._hanning_window),
-                # audio_data,
+                # np.multiply(audio_data, self._hanning_window),
+                audio_data
             )
-        )
-
-    @Profiler.profile
-    def _sample_points(self):
-        return np.exp2(
-            (
-                np.arange(self._ring_client.num_leds * self._octaves)
-                + self._ring_client.num_leds * 4
-            )
-            / self._ring_client.num_leds
         )
 
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
         audio = np.array(self._audio_input.get_data(length=self._window_size))
-        sample_points = self._sample_points()
-        frequencies = self._signal_normalizer.normalize(
-            self._frequencies(audio) * self._a_weighting, timestamp
+        samples = np.interp(
+            self._sample_points, self._fourier_frequencies, self._frequencies(audio)
         )
-        samples = np.interp(sample_points, self._fourier_frequencies, frequencies)
+        frequencies = self._signal_normalizer.normalize(samples * self._a_weighting, timestamp)
         wrapped_data = np.maximum.reduce(
-            np.reshape(samples, (-1, self._ring_client.num_leds))
+            np.reshape(frequencies, (-1, self._ring_client.num_leds))
         )
         return self._convert_bins(wrapped_data ** 2)
