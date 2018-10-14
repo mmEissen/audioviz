@@ -14,6 +14,8 @@ librosa = "*"
 pytest = "*"
 mypy = "*"
 black = "*"
+ipython = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.7"

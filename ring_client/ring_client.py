@@ -199,9 +199,6 @@ class RenderLoop(threading.Thread):
         new_frame = self._update_fnc(draw_start_time)
         self._ring_client.set_frame(new_frame)
         self._ring_client.show()
-        if draw_start_time - self._last_report > 5:
-            self._last_report = draw_start_time
-            print(Profiler.report(), end="\n\n")
         time_to_next_frame = self._frame_period - time.time() + draw_start_time
         if time_to_next_frame > 0:
             time.sleep(time_to_next_frame)

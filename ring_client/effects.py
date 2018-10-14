@@ -31,6 +31,8 @@ class ContiniousVolumeNormalizer:
 
     @Profiler.profile
     def normalize(self, signal, timestamp):
+        if self._last_call == 0:
+            self._last_call = timestamp
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
         return signal / self._current_threshold
@@ -81,15 +83,52 @@ class CircularFourierEffect:
             )
         )
 
+    def dump(
+        self,
+        audio,
+        measured_frequencies,
+        sampled_frequencies,
+        weighted_frequencies,
+        frequencies,
+        wrapped_data,
+    ):
+        with open("data_dump.py", "w") as f:
+            f.write("import numpy as np\n\n")
+            f.write(
+                f"sample_times = np.array({np.ndarray.tolist(np.arange(audio.shape[0]) / self.audio_input.sample_rate)})\n"
+            )
+            f.write(f"audio = np.array({np.ndarray.tolist(audio)})\n")
+            f.write(f"fourier_frequencies = np.array({np.ndarray.tolist(self._fourier_frequencies)})\n")
+            f.write(
+                f"measured_frequencies = np.array({np.ndarray.tolist(measured_frequencies)})\n"
+            )
+            f.write(f"sample_points = np.array({np.ndarray.tolist(self._sample_points)})\n")
+            f.write(
+                f"sampled_frequencies = np.array({np.ndarray.tolist(sampled_frequencies)})\n"
+            )
+            f.write(
+                f"weighted_frequencies = np.array({np.ndarray.tolist(weighted_frequencies)})\n"
+            )
+            f.write(f"wrapped_data = np.array({np.ndarray.tolist(wrapped_data)})\n")
+
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
         audio = np.array(self._audio_input.get_data(length=self._window_size))
+        measured_frequencies = self._frequencies(audio)
         sampled_frequencies = np.interp(
-            self._sample_points, self._fourier_frequencies, self._frequencies(audio)
+            self._sample_points, self._fourier_frequencies, measured_frequencies
         )
-        weighted_frequencies = sampled_frequencies * self._a_weighting
+        weighted_frequencies = (sampled_frequencies * self._a_weighting) ** 2
         frequencies = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
         wrapped_data = np.maximum.reduce(
             np.reshape(frequencies, (-1, self._ring_client.num_leds))
         )
-        return self._convert_bins(wrapped_data ** 2)
+        debug_values = (
+            audio,
+            measured_frequencies,
+            sampled_frequencies,
+            weighted_frequencies,
+            frequencies,
+            wrapped_data,
+        )
+        return self._convert_bins(wrapped_data)
