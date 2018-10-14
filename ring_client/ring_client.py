@@ -184,10 +184,9 @@ class RingClient(AbstractClient):
 
 
 class RenderLoop(threading.Thread):
-    frame_buffer_size = 2
 
     def __init__(self, ring_client, update_fnc, max_framerate=120):
-        super().__init__()
+        super().__init__(name="render-loop-thread")
         self._frame_period = 1 / max_framerate
         self._update_fnc = update_fnc
         self._is_running = False

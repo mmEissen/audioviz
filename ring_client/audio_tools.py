@@ -85,7 +85,7 @@ class AudioInput(AbstractAudioInput):
             self._audio_loop()
 
     def start(self) -> None:
-        thread = threading.Thread(target=self._run)
+        thread = threading.Thread(target=self._run, name="audio-capture-thread")
         thread.start()
 
     def stop(self):

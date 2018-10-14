@@ -5,8 +5,8 @@ import os
 import audio_tools
 import config
 import ring_client
+import profiler
 from effects import CircularFourierEffect
-from profiler import Profiler
 
 if config.MOCK_RING or config.MOCK_AUDIO:
     from PyQt5.QtWidgets import QApplication
@@ -43,6 +43,11 @@ def main() -> None:
     else:
         audio_input = audio_tools.AudioInput()
 
+    profiling_thread = profiler.ProfilingTread()
+    profiler.Profiler.enabled = config.PROFILING_ENABLED
+    if config.PROFILING_ENABLED:
+        profiling_thread.start()
+
     render_func = CircularFourierEffect(audio_input, client)
 
     loop = ring_client.RenderLoop(client, render_func)
@@ -51,6 +56,7 @@ def main() -> None:
     return_code = wait()
 
     loop.stop()
+    profiling_thread.stop()
     sys.exit(return_code)
 
 

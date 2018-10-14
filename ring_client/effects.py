@@ -84,10 +84,11 @@ class CircularFourierEffect:
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
         audio = np.array(self._audio_input.get_data(length=self._window_size))
-        samples = np.interp(
+        sampled_frequencies = np.interp(
             self._sample_points, self._fourier_frequencies, self._frequencies(audio)
         )
-        frequencies = self._signal_normalizer.normalize(samples * self._a_weighting, timestamp)
+        weighted_frequencies = sampled_frequencies * self._a_weighting
+        frequencies = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
         wrapped_data = np.maximum.reduce(
             np.reshape(frequencies, (-1, self._ring_client.num_leds))
         )
