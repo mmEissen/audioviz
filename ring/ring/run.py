@@ -15,15 +15,13 @@ if config.MOCK_RING or config.MOCK_AUDIO:
 
 def qtmock_client_and_wait():
     application = QApplication(sys.argv)
-    client = qt5_client.Qt5RingClient(60, 4)
+    client = qt5_client.Qt5RingClient(config.NUM_LEDS)
     return client, application.exec_
 
 
 def client_and_wait():
-    config_file = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)), "tcp_to_led", "config.h"
-    )
-    client = ring_client.RingClient.from_config_header(config_file)
+    print(__file__)
+    client = ring_client.RingClient(config.PORT, config.NUM_LEDS)
 
     def wait() -> int:
         input()

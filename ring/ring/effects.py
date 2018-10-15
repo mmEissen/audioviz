@@ -45,7 +45,7 @@ class CircularFourierEffect:
         self,
         audio_input: AbstractAudioInput,
         ring_client: AbstractClient,
-        window_size=0.04,
+        window_size=0.1,
     ) -> None:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
@@ -95,7 +95,7 @@ class CircularFourierEffect:
         with open("data_dump.py", "w") as f:
             f.write("import numpy as np\n\n")
             f.write(
-                f"sample_times = np.array({np.ndarray.tolist(np.arange(audio.shape[0]) / self.audio_input.sample_rate)})\n"
+                f"sample_times = np.array({np.ndarray.tolist(np.arange(audio.shape[0]) / self._audio_input.sample_rate)})\n"
             )
             f.write(f"audio = np.array({np.ndarray.tolist(audio)})\n")
             f.write(f"fourier_frequencies = np.array({np.ndarray.tolist(self._fourier_frequencies)})\n")

@@ -46,8 +46,8 @@ class LedRingWidget(QWidget):
 
 
 class Qt5RingClient(ring_client.AbstractClient):
-    def __init__(self, num_leds: int, num_colors: int) -> None:
-        super().__init__(num_leds, num_colors)
+    def __init__(self, num_leds: int) -> None:
+        super().__init__(num_leds)
         self._main_widget = LedRingWidget(num_leds)
 
     def connect(self) -> None:

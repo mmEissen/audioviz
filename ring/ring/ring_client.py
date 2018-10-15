@@ -81,10 +81,11 @@ class RingDetective(object):
 
 
 class AbstractClient(abc.ABC):
-    def __init__(self, num_leds: int, num_colors: int) -> None:
+    num_colors = 4
+
+    def __init__(self, num_leds: int) -> None:
         self.num_leds = num_leds
-        self.num_colors = num_colors
-        self.frame_size = num_leds * num_colors
+        self.frame_size = num_leds * self.num_colors
         self._pixels = self.clear_frame()
 
     def __repr__(self) -> str:
@@ -116,41 +117,16 @@ class AbstractClient(abc.ABC):
 
 
 class RingClient(AbstractClient):
+    _frame_number_bytes = 4
+
     def __init__(
-        self, port: int, num_leds: int, num_colors: int, frame_number_bytes: int
+        self, port: int, num_leds: int,
     ) -> None:
-        super().__init__(num_leds, num_colors)
+        super().__init__(num_leds)
         self._port = port
         self._ring_address = None
         self._tcp_socket: t.Optional[socket.socket] = None
         self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self._frame_number_bytes = frame_number_bytes
-
-    @classmethod
-    def from_config_header(cls, filename: str) -> "RingClient":
-        define_statement = re.compile(r"#define\W+(?P<name>\w+) (?P<value>.*)\n")
-        with open(filename) as config_file:
-            config_content = config_file.read()
-        defines = dict(define_statement.findall(config_content))
-
-        def _get_define(name: str) -> int:
-            try:
-                return int(defines[name])
-            except KeyError as exception:
-                raise InvalidConfigHeaderError(
-                    "No define for {}".format(name)
-                ) from exception
-            except ValueError as exception:
-                raise InvalidConfigHeaderError(
-                    "{} is not an int".format(name)
-                ) from exception
-
-        port = _get_define("PORT")
-        num_leds = _get_define("NUM_LEDS")
-        num_colors = _get_define("NUM_COLORS")
-        frame_number_bytes = _get_define("FRAME_NUMBER_BYTES")
-
-        return cls(port, num_leds, num_colors, frame_number_bytes)
 
     def is_connected(self) -> bool:
         return self._tcp_socket is not None
