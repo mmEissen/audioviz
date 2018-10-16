@@ -8,7 +8,6 @@ scipy = "*"
 numpy = "*"
 pyalsaaudio = "*"
 librosa = "*"
-"pyqt5" = "*"
 
 [dev-packages]
 pytest = "*"
@@ -16,6 +15,7 @@ mypy = "*"
 black = "*"
 ipython = "*"
 matplotlib = "*"
+"pyqt5" = "*"
 
 [requires]
 python_version = "3.7"
