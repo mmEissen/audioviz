@@ -4,7 +4,6 @@ from itertools import count
 import numpy as np
 import librosa
 from numpy.fft import rfft as fourier_transform, rfftfreq
-from scipy.stats import binned_statistic, circmean
 
 from audio_tools import AbstractAudioInput
 from ring_client import AbstractClient, Pixel
