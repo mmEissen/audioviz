@@ -7,7 +7,6 @@ from collections import deque
 import typing as t
 
 import alsaaudio as alsa
-import librosa
 import numpy
 
 MS_IN_SECOND = 1000

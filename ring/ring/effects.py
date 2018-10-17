@@ -2,9 +2,9 @@ import typing as t
 from itertools import count
 
 import numpy as np
-import librosa
 from numpy.fft import rfft as fourier_transform, rfftfreq
 
+import a_weighting_table
 from audio_tools import AbstractAudioInput
 from ring_client import AbstractClient, Pixel
 from profiler import Profiler
@@ -62,8 +62,10 @@ class CircularFourierEffect:
             )
             / self._ring_client.num_leds
         )
-        self._a_weighting = librosa.db_to_amplitude(
-            librosa.A_weighting(self._sample_points, min_db=None)
+        self._a_weighting = np.interp(
+            self._sample_points,
+            a_weighting_table.frequencies,
+            a_weighting_table.weights,
         )
         self._hanning_window = np.hanning(
             self._audio_input.seconds_to_samples(window_size)
@@ -97,11 +99,15 @@ class CircularFourierEffect:
                 f"sample_times = np.array({np.ndarray.tolist(np.arange(audio.shape[0]) / self._audio_input.sample_rate)})\n"
             )
             f.write(f"audio = np.array({np.ndarray.tolist(audio)})\n")
-            f.write(f"fourier_frequencies = np.array({np.ndarray.tolist(self._fourier_frequencies)})\n")
+            f.write(
+                f"fourier_frequencies = np.array({np.ndarray.tolist(self._fourier_frequencies)})\n"
+            )
             f.write(
                 f"measured_frequencies = np.array({np.ndarray.tolist(measured_frequencies)})\n"
             )
-            f.write(f"sample_points = np.array({np.ndarray.tolist(self._sample_points)})\n")
+            f.write(
+                f"sample_points = np.array({np.ndarray.tolist(self._sample_points)})\n"
+            )
             f.write(
                 f"sampled_frequencies = np.array({np.ndarray.tolist(sampled_frequencies)})\n"
             )
