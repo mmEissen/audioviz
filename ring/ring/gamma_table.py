@@ -1,4 +1,4 @@
-import numpy as npp
+import numpy as np
 
 # taken from https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
 gamma_table = np.array([
