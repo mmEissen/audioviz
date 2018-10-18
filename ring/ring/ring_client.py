@@ -151,8 +151,12 @@ class RingClient(AbstractClient):
             self._tcp_socket.close()
 
     @Profiler.profile
+    def _pixel_list(self):
+        return [pixel.get_rgbw() for pixel in self._pixels]
+
+    @Profiler.profile
     def _raw_data(self):
-        pixels = np.concatenate([pixel.get_rgbw() for pixel in self._pixels])
+        pixels = np.concatenate(self._pixel_list())
         pixels = (pixels * 255).astype("uint8")
         return bytes(self._frame_number_bytes) + bytes(pixels)
 
