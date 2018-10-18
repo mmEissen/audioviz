@@ -42,7 +42,7 @@ class Pixel:
         # For now just r, g, b, 0.
         # This might have a better solution:
         # http://www.mirlab.org/conference_papers/International_Conference/ICASSP%202014/papers/p1214-lee.pdf
-        return (np.append(self._values, [0]) * 255).astype("uint8")
+        return np.append(self._values, [0])
 
     def get_rgb(self):
         return self._values * 255
@@ -152,7 +152,8 @@ class RingClient(AbstractClient):
 
     @Profiler.profile
     def _raw_data(self):
-        pixels = np.concatenate([pixel.to_bytes() for pixel in self._pixels])
+        pixels = np.concatenate([pixel.get_rgbw() for pixel in self._pixels])
+        pixels = (pixels * 255).astype("uint8")
         return bytes(self._frame_number_bytes) + bytes(pixels)
 
     @Profiler.profile
