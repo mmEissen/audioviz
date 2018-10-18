@@ -151,6 +151,12 @@ class RingClient(AbstractClient):
             self._tcp_socket.close()
 
     @Profiler.profile
+    def _raw_data(self):
+        return bytes([0] * self._frame_number_bytes) + b"".join(
+            pixel.to_bytes() for pixel in self._pixels
+        )
+
+    @Profiler.profile
     def show(self) -> None:
         if not self.is_connected():
             raise NotConnectedError("Client must be connected before calling show()!")
