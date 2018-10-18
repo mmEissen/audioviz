@@ -152,9 +152,8 @@ class RingClient(AbstractClient):
 
     @Profiler.profile
     def _raw_data(self):
-        return bytes(self._frame_number_bytes) + b"".join(
-            pixel.to_bytes() for pixel in self._pixels
-        )
+        pixels = [pixel.to_bytes() for pixel in self._pixels]
+        return bytes(self._frame_number_bytes) + b"".join(pixels)
 
     @Profiler.profile
     def show(self) -> None:
