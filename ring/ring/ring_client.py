@@ -48,7 +48,7 @@ class Pixel:
         return self._values * 255
 
     def to_bytes(self):
-        return bytes(self._gamma_table[self.get_rgbw()])
+        return self._gamma_table[self.get_rgbw()]
 
 
 class RingDetective(object):
@@ -152,8 +152,8 @@ class RingClient(AbstractClient):
 
     @Profiler.profile
     def _raw_data(self):
-        pixels = [pixel.to_bytes() for pixel in self._pixels]
-        return bytes(self._frame_number_bytes) + b"".join(pixels)
+        pixels = np.concatenate([pixel.to_bytes() for pixel in self._pixels])
+        return bytes(self._frame_number_bytes) + bytes(pixels)
 
     @Profiler.profile
     def show(self) -> None:
