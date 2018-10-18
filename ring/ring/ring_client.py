@@ -150,6 +150,7 @@ class RingClient(AbstractClient):
             self._tcp_socket = t.cast(socket.socket, self._tcp_socket)
             self._tcp_socket.close()
 
+    @Profiler.profile
     def show(self) -> None:
         if not self.is_connected():
             raise NotConnectedError("Client must be connected before calling show()!")
