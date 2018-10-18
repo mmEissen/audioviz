@@ -1,5 +1,7 @@
+import numpy as npp
+
 # taken from https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
-gamma_table = [
+gamma_table = np.array([
     0,
     0,
     0,
@@ -256,5 +258,5 @@ gamma_table = [
     249,
     252,
     255,
-]
+], dtype="uint8")
 

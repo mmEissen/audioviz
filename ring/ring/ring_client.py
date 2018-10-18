@@ -29,9 +29,6 @@ class PixelOutOfRangeError(IndexError):
 
 
 class Pixel:
-    # taken from https://learn.adafruit.com/led-tricks-gamma-correction/the-quick-fix
-    _gamma_table = np.array(gamma_table.gamma_table, dtype="uint8")
-
     def __init__(self, red, green, blue) -> None:
         self._values = np.array((red, green, blue))
 
@@ -46,9 +43,6 @@ class Pixel:
 
     def get_rgb(self):
         return self._values * 255
-
-    def to_bytes(self):
-        return self._gamma_table[self.get_rgbw()]
 
 
 class RingDetective(object):
@@ -157,7 +151,7 @@ class RingClient(AbstractClient):
     @Profiler.profile
     def _raw_data(self):
         pixels = np.concatenate(self._pixel_list())
-        pixels = (pixels * 255).astype("uint8")
+        pixels = gamma_table.gamma_table[(pixels * 255).astype("uint8")]
         return bytes(self._frame_number_bytes) + bytes(pixels)
 
     @Profiler.profile
