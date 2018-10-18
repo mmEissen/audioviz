@@ -160,10 +160,7 @@ class RingClient(AbstractClient):
     def show(self) -> None:
         if not self.is_connected():
             raise NotConnectedError("Client must be connected before calling show()!")
-        raw_data = bytes([0] * self._frame_number_bytes) + b"".join(
-            pixel.to_bytes() for pixel in self._pixels
-        )
-        self._udp_socket.sendto(raw_data, (self._ring_address, self._port))
+        self._udp_socket.sendto(self._raw_data(), (self._ring_address, self._port))
 
 
 class RenderLoop(threading.Thread):
