@@ -6,7 +6,7 @@ from numpy.fft import rfft as fourier_transform, rfftfreq
 
 import a_weighting_table
 from audio_tools import AbstractAudioInput
-from ring_client import AbstractClient, Pixel
+from airpixel.client import AbstractClient, Pixel
 from profiler import Profiler
 
 

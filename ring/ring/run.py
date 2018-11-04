@@ -4,24 +4,27 @@ import os
 
 import audio_tools
 import config
-import ring_client
+from airpixel import client as air_client
 import profiler
 from effects import CircularFourierEffect
 
-if config.MOCK_RING or config.MOCK_AUDIO:
+if config.MOCK_RING:
     from PyQt5.QtWidgets import QApplication
-    import qt5_client
+    from airpixel import qt5_client
+
+if config.MOCK_AUDIO:
+    import mock_audio
 
 
 def qtmock_client_and_wait():
     application = QApplication(sys.argv)
-    client = qt5_client.Qt5RingClient(config.NUM_LEDS)
+    client = qt5_client.Qt5Client(config.NUM_LEDS)
     return client, application.exec_
 
 
 def client_and_wait():
     print(__file__)
-    client = ring_client.RingClient(config.PORT, config.NUM_LEDS)
+    client = air_client.AirClient(config.PORT, config.PORT + 1, config.NUM_LEDS)
 
     def wait() -> int:
         input()
@@ -37,7 +40,7 @@ def main() -> None:
         client, wait = client_and_wait()
 
     if config.MOCK_AUDIO:
-        audio_input: audio_tools.AbstractAudioInput = qt5_client.MockSinInput()
+        audio_input: audio_tools.AbstractAudioInput = mock_audio.MockSinInput()
     else:
         audio_input = audio_tools.AudioInput()
 
@@ -48,7 +51,7 @@ def main() -> None:
 
     render_func = CircularFourierEffect(audio_input, client)
 
-    loop = ring_client.RenderLoop(client, render_func)
+    loop = air_client.RenderLoop(client, render_func)
     loop.start()
 
     return_code = wait()
