@@ -11,7 +11,7 @@ from profiler import Profiler
 
 
 class ContiniousVolumeNormalizer:
-    def __init__(self, min_threshold=0.0001, falloff=2) -> None:
+    def __init__(self, min_threshold=0.0001, falloff=4) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
@@ -79,42 +79,10 @@ class CircularFourierEffect:
     def _frequencies(self, audio_data):
         return np.absolute(
             fourier_transform(
-                # np.multiply(audio_data, self._hanning_window),
-                audio_data
+                np.multiply(audio_data, self._hanning_window),
+                # audio_data
             )
         )
-
-    def dump(
-        self,
-        audio,
-        measured_frequencies,
-        sampled_frequencies,
-        weighted_frequencies,
-        frequencies,
-        wrapped_data,
-    ):
-        with open("data_dump.py", "w") as f:
-            f.write("import numpy as np\n\n")
-            f.write(
-                f"sample_times = np.array({np.ndarray.tolist(np.arange(audio.shape[0]) / self._audio_input.sample_rate)})\n"
-            )
-            f.write(f"audio = np.array({np.ndarray.tolist(audio)})\n")
-            f.write(
-                f"fourier_frequencies = np.array({np.ndarray.tolist(self._fourier_frequencies)})\n"
-            )
-            f.write(
-                f"measured_frequencies = np.array({np.ndarray.tolist(measured_frequencies)})\n"
-            )
-            f.write(
-                f"sample_points = np.array({np.ndarray.tolist(self._sample_points)})\n"
-            )
-            f.write(
-                f"sampled_frequencies = np.array({np.ndarray.tolist(sampled_frequencies)})\n"
-            )
-            f.write(
-                f"weighted_frequencies = np.array({np.ndarray.tolist(weighted_frequencies)})\n"
-            )
-            f.write(f"wrapped_data = np.array({np.ndarray.tolist(wrapped_data)})\n")
 
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
@@ -124,16 +92,9 @@ class CircularFourierEffect:
             self._sample_points, self._fourier_frequencies, measured_frequencies
         )
         weighted_frequencies = (sampled_frequencies * self._a_weighting) ** 2
-        frequencies = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
+        normalized = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
+        frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
         wrapped_data = np.maximum.reduce(
             np.reshape(frequencies, (-1, self._ring_client.num_leds))
-        )
-        debug_values = (
-            audio,
-            measured_frequencies,
-            sampled_frequencies,
-            weighted_frequencies,
-            frequencies,
-            wrapped_data,
         )
         return self._convert_bins(wrapped_data)
