@@ -3,6 +3,8 @@ from itertools import count
 
 import numpy as np
 from numpy.fft import rfft as fourier_transform, rfftfreq
+import matplotlib
+from matplotlib import pyplot as plt
 
 import a_weighting_table
 from audio_tools import AbstractAudioInput
@@ -11,7 +13,7 @@ from profiler import Profiler
 
 
 class ContiniousVolumeNormalizer:
-    def __init__(self, min_threshold=0.0001, falloff=4) -> None:
+    def __init__(self, min_threshold=0.0001, falloff=32) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
@@ -38,7 +40,7 @@ class ContiniousVolumeNormalizer:
 
 
 class CircularFourierEffect:
-    _octaves = 12
+    _octaves = 8
 
     def __init__(
         self,
@@ -72,9 +74,6 @@ class CircularFourierEffect:
         )
         self._signal_normalizer = ContiniousVolumeNormalizer()
 
-    def _convert_bins(self, bins):
-        return [Pixel(amp, amp, amp) for amp in bins]
-
     @Profiler.profile
     def _frequencies(self, audio_data):
         return np.absolute(
@@ -83,6 +82,20 @@ class CircularFourierEffect:
                 # audio_data
             )
         )
+
+    def _to_colors(self, data, timestamp):
+        wrapped = np.reshape(data, (-1, self._ring_client.num_leds))
+        base_colors = np.transpose(np.reshape(np.arange(self._octaves) / self._octaves, (1, self._octaves)))
+        weighted = wrapped * base_colors
+        color_values = np.add.reduce(weighted)
+        lightness = np.maximum.reduce(wrapped)
+        colors = (colormap(value) for value in color_values)
+        colormap = plt.get_cmap('autumn')
+        return [
+            Pixel(float(g * l), float(r * l), float(b * l))
+            for (r, g, b, _), l in zip(colors, lightness)
+        ]    
+
 
     @Profiler.profile
     def __call__(self, timestamp: float) -> t.List[Pixel]:
@@ -94,7 +107,47 @@ class CircularFourierEffect:
         weighted_frequencies = (sampled_frequencies * self._a_weighting) ** 2
         normalized = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
         frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
-        wrapped_data = np.maximum.reduce(
-            np.reshape(frequencies, (-1, self._ring_client.num_leds))
+        return self._to_colors(frequencies, timestamp)
+
+
+class FadingCircularEffect(CircularFourierEffect):
+    def __init__(
+        self,
+        audio_input: AbstractAudioInput,
+        ring_client: AbstractClient,
+        window_size=0.1,
+    ) -> None:
+        super().__init__(audio_input, ring_client, window_size)
+        self._last_values = np.zeros(self._ring_client.num_leds)
+        self._last_time = 0
+        self._falloff = 64
+        self._color_rotation_period = 180
+
+    def _combine_values(self, new_values, timestamp):
+        diff = timestamp - self._last_time
+        self._last_time = timestamp
+        factor = 1 / self._falloff ** (diff) if diff < 2 else 0
+        self._last_values = self._last_values * factor
+        self._last_values = np.maximum(self._last_values, new_values)
+        return self._last_values
+    
+    def _values_to_rgb(self, values, timestamp):
+        hue = np.full(
+            values.shape, 
+            (timestamp % self._color_rotation_period) / self._color_rotation_period,
         )
-        return self._convert_bins(wrapped_data)
+        saturation = np.clip(values * (-2), -2, -1) + 2
+        values_color = np.clip(values * 2, 0, 1)
+        hsvs = np.transpose(np.array((hue, saturation, values_color)))
+        rgbs = matplotlib.colors.hsv_to_rgb(hsvs)
+        return rgbs
+
+
+    def _to_colors(self, data, timestamp):
+        wrapped = np.reshape(data, (-1, self._ring_client.num_leds))
+        color_values = np.maximum.reduce(wrapped)
+        new_values = self._combine_values(color_values, timestamp)
+        return [
+            Pixel(g, r, b)
+            for r, g, b in self._values_to_rgb(new_values, timestamp)
+        ]    
