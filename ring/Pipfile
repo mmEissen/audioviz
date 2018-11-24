@@ -6,18 +6,17 @@ name = "pypi"
 [packages]
 numpy = "*"
 pyalsaaudio = "*"
-airpixel = {version = "*", extras = ["mock"]}
+airpixel = {editable = true, path = "./../../airpixel"}
 
 [dev-packages]
 pytest = "*"
 mypy = "*"
-black = "*"
 ipython = "*"
 matplotlib = "*"
 "pyqt5" = "*"
 
 [requires]
-python_version = "3.7"
+python_version = "3.5"
 
 [pipenv]
 allow_prereleases = true

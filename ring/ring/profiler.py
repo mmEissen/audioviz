@@ -6,7 +6,7 @@ from collections import deque
 
 
 class Profiler:
-    _times: t.Dict[str, t.Tuple[t.Any, ...]] = {}
+    _times = {}
     enabled = False
 
     @classmethod

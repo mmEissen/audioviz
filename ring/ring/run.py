@@ -19,15 +19,18 @@ if config.MOCK_AUDIO:
 def qtmock_client_and_wait():
     application = QApplication(sys.argv)
     client = qt5_client.Qt5Client(config.NUM_LEDS)
-    return client, application.exec_
+    def wait(loop) -> int:
+        return application.exec_()
+    return client, wait
 
 
 def client_and_wait():
     print(__file__)
     client = air_client.AirClient(config.PORT, config.PORT + 1, config.NUM_LEDS)
 
-    def wait() -> int:
-        input()
+    def wait(loop) -> int:
+        while True:
+            print("{:>5.1f}".format(loop.avg_frame_time * 1000), end="\r")
         return 0
 
     return client, wait
@@ -40,7 +43,7 @@ def main() -> None:
         client, wait = client_and_wait()
 
     if config.MOCK_AUDIO:
-        audio_input: audio_tools.AbstractAudioInput = mock_audio.MockSinInput()
+        audio_input = mock_audio.MockSinInput()
     else:
         audio_input = audio_tools.AudioInput()
 
@@ -54,7 +57,7 @@ def main() -> None:
     loop = air_client.RenderLoop(client, render_func)
     loop.start()
 
-    return_code = wait()
+    return_code = wait(loop)
 
     loop.stop()
     profiling_thread.stop()

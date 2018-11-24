@@ -18,15 +18,15 @@ class AbstractAudioInput(abc.ABC):
 
     def __init__(
         self,
-        sample_rate: int = 44100,
-        period_size: int = 512,
-        buffer_size: int = MS_IN_SECOND * 1,
+        sample_rate = 44100,
+        period_size = 512,
+        buffer_size = MS_IN_SECOND * 1,
     ) -> None:
         self.sample_rate = sample_rate
         self.period = sample_rate / period_size * MS_IN_SECOND
         self.sample_delta = 1 / sample_rate
 
-    def seconds_to_samples(self, seconds: float):
+    def seconds_to_samples(self, seconds):
         return int(seconds * self.sample_rate)
 
     @abc.abstractmethod
@@ -38,10 +38,10 @@ class AbstractAudioInput(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_samples(self, num_samples: int) -> t.Iterable[float]:
+    def get_samples(self, num_samples):
         pass
 
-    def get_data(self, length: float = 0) -> t.Iterable[float]:
+    def get_data(self, length = 0):
         num_samples = self.seconds_to_samples(length)
         return self.get_samples(num_samples)
 
@@ -49,10 +49,10 @@ class AbstractAudioInput(abc.ABC):
 class AudioInput(AbstractAudioInput):
     def __init__(
         self,
-        device: str = "default",
-        sample_rate: int = 44100,
-        period_size: int = 512,
-        buffer_size: int = MS_IN_SECOND * 1,
+        device = "default",
+        sample_rate = 44100,
+        period_size = 512,
+        buffer_size = MS_IN_SECOND * 1,
     ) -> None:
         super().__init__(sample_rate, period_size, buffer_size)
         self._is_running = False
@@ -90,7 +90,7 @@ class AudioInput(AbstractAudioInput):
     def stop(self):
         self._is_running = False
 
-    def get_samples(self, num_samples: int) -> t.Iterable[float]:
+    def get_samples(self, num_samples):
         self._buffer_lock.acquire()
         buffer_copy = [
             sample for _, sample in zip(range(num_samples), reversed(self._buffer))

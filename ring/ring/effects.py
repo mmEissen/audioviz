@@ -4,7 +4,6 @@ from itertools import count
 import numpy as np
 from numpy.fft import rfft as fourier_transform, rfftfreq
 import matplotlib
-from matplotlib import pyplot as plt
 
 import a_weighting_table
 from audio_tools import AbstractAudioInput
@@ -46,7 +45,7 @@ class CircularFourierEffect:
         self,
         audio_input: AbstractAudioInput,
         ring_client: AbstractClient,
-        window_size=0.1,
+        window_size=0.04,
     ) -> None:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
@@ -81,24 +80,11 @@ class CircularFourierEffect:
                 np.multiply(audio_data, self._hanning_window),
                 # audio_data
             )
-        )
-
-    def _to_colors(self, data, timestamp):
-        wrapped = np.reshape(data, (-1, self._ring_client.num_leds))
-        base_colors = np.transpose(np.reshape(np.arange(self._octaves) / self._octaves, (1, self._octaves)))
-        weighted = wrapped * base_colors
-        color_values = np.add.reduce(weighted)
-        lightness = np.maximum.reduce(wrapped)
-        colors = (colormap(value) for value in color_values)
-        colormap = plt.get_cmap('autumn')
-        return [
-            Pixel(float(g * l), float(r * l), float(b * l))
-            for (r, g, b, _), l in zip(colors, lightness)
-        ]    
+        )  
 
 
     @Profiler.profile
-    def __call__(self, timestamp: float) -> t.List[Pixel]:
+    def __call__(self, timestamp):
         audio = np.array(self._audio_input.get_data(length=self._window_size))
         measured_frequencies = self._frequencies(audio)
         sampled_frequencies = np.interp(
@@ -107,7 +93,8 @@ class CircularFourierEffect:
         weighted_frequencies = (sampled_frequencies * self._a_weighting) ** 2
         normalized = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
         frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
-        return self._to_colors(frequencies, timestamp)
+        f = self._to_colors(frequencies, timestamp)
+        return f
 
 
 class FadingCircularEffect(CircularFourierEffect):
@@ -141,7 +128,6 @@ class FadingCircularEffect(CircularFourierEffect):
         hsvs = np.transpose(np.array((hue, saturation, values_color)))
         rgbs = matplotlib.colors.hsv_to_rgb(hsvs)
         return rgbs
-
 
     def _to_colors(self, data, timestamp):
         wrapped = np.reshape(data, (-1, self._ring_client.num_leds))
