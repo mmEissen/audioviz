@@ -6,7 +6,8 @@ name = "pypi"
 [packages]
 numpy = "*"
 pyalsaaudio = "*"
-airpixel = {editable = true, path = "./../../airpixel"}
+scipy = "*"
+airpixel = ">=0.3"
 
 [dev-packages]
 pytest = "*"

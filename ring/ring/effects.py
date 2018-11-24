@@ -4,6 +4,8 @@ from itertools import count
 import numpy as np
 from numpy.fft import rfft as fourier_transform, rfftfreq
 import matplotlib
+matplotlib.use("agg")
+from scipy import ndimage
 
 import a_weighting_table
 from audio_tools import AbstractAudioInput
