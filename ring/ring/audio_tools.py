@@ -70,14 +70,14 @@ class AudioInput(AbstractAudioInput):
         self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
         self._mic.setperiodsize(period_size)
         self._mic.setrate(sample_rate)
-        self._mic.setformat(alsa.PCM_FORMAT_FLOAT_BE)
+        self._mic.setformat(alsa.PCM_FORMAT_S32_BE)
         self._mic.setchannels(self.number_channels)
 
     def _audio_loop(self) -> None:
         length, raw_data = self._mic.read()
 
         try:
-            data = (value for value, in struct.iter_unpack(">f", raw_data))
+            data = (float(value) for value, in struct.iter_unpack(">L", raw_data))
         except struct.error as error:
             raise AudioError(
                 "Could not decode data: '{}', length: {}".format(raw_data, length),
