@@ -70,7 +70,7 @@ class AudioInput(AbstractAudioInput):
         self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
         self._mic.setperiodsize(period_size)
         self._mic.setrate(sample_rate)
-        self._mic.setformat(alsa.PCM_FORMAT_S32_BE)
+        self._mic.setformat(alsa.PCM_FORMAT_U32_BE)
         self._mic.setchannels(self.number_channels)
 
     def _audio_loop(self) -> None:
