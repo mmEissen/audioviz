@@ -7,13 +7,13 @@ name = "pypi"
 numpy = "*"
 pyalsaaudio = "*"
 scipy = "*"
+matplotlib = "*"
 airpixel = ">=0.3"
 
 [dev-packages]
 pytest = "*"
 mypy = "*"
 ipython = "*"
-matplotlib = "*"
 "pyqt5" = "*"
 
 [requires]

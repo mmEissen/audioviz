@@ -46,6 +46,10 @@ class AbstractAudioInput(abc.ABC):
         return self.get_samples(num_samples)
 
 
+class AudioError(Exception):
+    pass
+
+
 class AudioInput(AbstractAudioInput):
     def __init__(
         self,
@@ -72,7 +76,12 @@ class AudioInput(AbstractAudioInput):
     def _audio_loop(self) -> None:
         length, raw_data = self._mic.read()
 
-        data = (value for value, in struct.iter_unpack(">f", raw_data))
+        try:
+            data = (value for value, in struct.iter_unpack(">f", raw_data))
+        except struct.error as error:
+            raise AudioError(
+                "Could not decode data: '{}', length: {}".format(raw_data, length),
+            )
 
         self._buffer_lock.acquire()
         self._buffer.extend(data)
