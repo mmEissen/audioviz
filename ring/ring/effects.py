@@ -137,7 +137,7 @@ class FadingCircularEffect(CircularFourierEffect):
         max_after = np.amax(smoothed)
         factor = max_after / max_before if max_before else 1
         smoothed = smoothed * factor
-        wrapped = np.reshape(data, (-1, self._ring_client.num_leds))
+        wrapped = np.reshape(smoothed, (-1, self._ring_client.num_leds))
         color_values = np.maximum.reduce(wrapped)
         new_values = self._combine_values(color_values, timestamp)
         return [
