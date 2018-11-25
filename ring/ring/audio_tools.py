@@ -54,7 +54,7 @@ class AudioInput(AbstractAudioInput):
     def __init__(
         self,
         device = "default",
-        sample_rate = 44100,
+        sample_rate = 22050,
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
     ) -> None:
