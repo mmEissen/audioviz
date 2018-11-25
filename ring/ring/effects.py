@@ -133,10 +133,6 @@ class FadingCircularEffect(CircularFourierEffect):
 
     def _to_colors(self, data, timestamp):
         smoothed = ndimage.gaussian_filter(data, sigma=2)
-        max_before = np.amax(data)
-        max_after = np.amax(smoothed)
-        factor = max_before / max_after if max_before else 1
-        smoothed = smoothed * factor
         wrapped = np.reshape(smoothed, (-1, self._ring_client.num_leds))
         color_values = np.maximum.reduce(wrapped)
         new_values = self._combine_values(color_values, timestamp)
