@@ -13,7 +13,7 @@ from airpixel.client import AbstractClient, Pixel
 from profiler import Profiler
 
 
-class ContiniousVolumeNormalizer:
+class ContiniuousVolumeNormalizer:
     def __init__(self, min_threshold=0.0001, falloff=32) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
@@ -73,7 +73,7 @@ class CircularFourierEffect:
         self._hanning_window = np.hanning(
             self._audio_input.seconds_to_samples(window_size)
         )
-        self._signal_normalizer = ContiniousVolumeNormalizer()
+        self._signal_normalizer = ContiniuousVolumeNormalizer()
 
     @Profiler.profile
     def _frequencies(self, audio_data):
