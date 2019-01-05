@@ -95,7 +95,7 @@ class CircularFourierEffect:
         sampled_frequencies = np.interp(
             self._sample_points, self._fourier_frequencies, measured_frequencies
         )
-        weighted_frequencies = (sampled_frequencies * self._a_weighting) ** 2
+        weighted_frequencies = (sampled_frequencies * self._a_weighting)
         normalized = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
         frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
         f = self._to_colors(frequencies, timestamp)
