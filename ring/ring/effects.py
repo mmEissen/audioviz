@@ -37,7 +37,7 @@ class ContiniuousVolumeNormalizer:
             self._last_call = timestamp
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
-        if _current_threshold >= self._min_threshold:
+        if self._current_threshold >= self._min_threshold:
             return signal / self._current_threshold
         return signal * 0
 
