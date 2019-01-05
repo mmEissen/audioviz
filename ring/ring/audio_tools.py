@@ -62,10 +62,9 @@ class AudioInput(AbstractAudioInput):
         self._is_running = False
 
         max_buffered_samples = buffer_size * sample_rate // MS_IN_SECOND
-        self._buffer = deque(
-            (0 for _ in range(max_buffered_samples)), maxlen=max_buffered_samples
-        )
         self._buffer_lock = threading.Lock()
+
+        self._clear_buffer()
 
         self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
         self._mic.setperiodsize(period_size)
@@ -73,15 +72,20 @@ class AudioInput(AbstractAudioInput):
         self._mic.setformat(alsa.PCM_FORMAT_U32_LE)
         self._mic.setchannels(self.number_channels)
 
+    def _clear_buffer(self) -> None:
+        self._buffer_lock.acquire()
+        self._buffer = deque(
+            (0 for _ in range(max_buffered_samples)), maxlen=max_buffered_samples
+        )
+        self._buffer_lock.release()
+
     def _audio_loop(self) -> None:
         length, raw_data = self._mic.read()
 
         try:
             data = (float(value) for value, in struct.iter_unpack("<L", raw_data))
         except struct.error as error:
-            raise AudioError(
-                "Could not decode data: '{}', length: {}".format(raw_data, length),
-            )
+            self._clear_buffer()
 
         self._buffer_lock.acquire()
         self._buffer.extend(data)
