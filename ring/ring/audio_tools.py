@@ -86,6 +86,7 @@ class AudioInput(AbstractAudioInput):
             data = (float(value) for value, in struct.iter_unpack("<L", raw_data))
         except struct.error as error:
             self._clear_buffer()
+            return
 
         self._buffer_lock.acquire()
         self._buffer.extend(data)
