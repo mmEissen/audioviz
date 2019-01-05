@@ -14,7 +14,7 @@ from profiler import Profiler
 
 
 class ContiniuousVolumeNormalizer:
-    def __init__(self, min_threshold=0.0001, falloff=32) -> None:
+    def __init__(self, min_threshold=0.001, falloff=32) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
@@ -24,11 +24,13 @@ class ContiniuousVolumeNormalizer:
         if max_sample >= self._current_threshold:
             self._current_threshold = max_sample
         else:
-            max_sample = max(max_sample, self._min_threshold)
-            factor = 1 / self._falloff ** (timestamp - self._last_call)
-            self._current_threshold = self._current_threshold * factor + max_sample * (
-                1 - factor
-            )
+            if max_sample > self._min_threshold:
+                factor = 1 / self._falloff ** (timestamp - self._last_call)
+                self._current_threshold = self._current_threshold * factor + max_sample * (
+                    1 - factor
+                )
+            else:
+                self._current_threshold = 0
         self._last_call = timestamp
 
     @Profiler.profile
