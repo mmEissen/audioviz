@@ -24,13 +24,11 @@ class ContiniuousVolumeNormalizer:
         if max_sample >= self._current_threshold:
             self._current_threshold = max_sample
         else:
-            if max_sample > self._min_threshold:
-                factor = 1 / self._falloff ** (timestamp - self._last_call)
-                self._current_threshold = self._current_threshold * factor + max_sample * (
-                    1 - factor
-                )
-            else:
-                self._current_threshold = 0
+            target_threshold = max_sample
+            factor = 1 / self._falloff ** (timestamp - self._last_call)
+            self._current_threshold = self._current_threshold * factor + target_threshold * (
+                1 - factor
+            )
         self._last_call = timestamp
 
     @Profiler.profile
@@ -39,7 +37,9 @@ class ContiniuousVolumeNormalizer:
             self._last_call = timestamp
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
-        return signal / self._current_threshold
+        if _current_threshold >= self._min_threshold:
+            return signal / self._current_threshold
+        return signal * 0
 
 
 class CircularFourierEffect:
