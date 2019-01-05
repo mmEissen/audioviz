@@ -61,7 +61,7 @@ class AudioInput(AbstractAudioInput):
         super().__init__(sample_rate, period_size, buffer_size)
         self._is_running = False
 
-        max_buffered_samples = buffer_size * sample_rate // MS_IN_SECOND
+        self._buffer_length = buffer_size * sample_rate // MS_IN_SECOND
         self._buffer_lock = threading.Lock()
 
         self._clear_buffer()
@@ -75,7 +75,7 @@ class AudioInput(AbstractAudioInput):
     def _clear_buffer(self) -> None:
         self._buffer_lock.acquire()
         self._buffer = deque(
-            (0 for _ in range(max_buffered_samples)), maxlen=max_buffered_samples
+            (0 for _ in range(self._buffer_length)), maxlen=self._buffer_length
         )
         self._buffer_lock.release()
 
