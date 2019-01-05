@@ -49,6 +49,7 @@ class CircularFourierEffect:
         self,
         audio_input: AbstractAudioInput,
         ring_client: AbstractClient,
+        signal_normalizer: ContiniuousVolumeNormalizer,
         window_size=0.04,
     ) -> None:
         self._bins_per_octave = ring_client.num_leds
@@ -75,7 +76,7 @@ class CircularFourierEffect:
         self._hanning_window = np.hanning(
             self._audio_input.seconds_to_samples(window_size)
         )
-        self._signal_normalizer = ContiniuousVolumeNormalizer()
+        self._signal_normalizer = signal_normalizer
 
     @Profiler.profile
     def _frequencies(self, audio_data):
@@ -106,9 +107,15 @@ class FadingCircularEffect(CircularFourierEffect):
         self,
         audio_input: AbstractAudioInput,
         ring_client: AbstractClient,
+        signal_normalizer: ContiniuousVolumeNormalizer,
         window_size=0.1,
     ) -> None:
-        super().__init__(audio_input, ring_client, window_size)
+        super().__init__(
+            audio_input,
+            ring_client,
+            signal_normalizer,
+            window_size,
+        )
         self._last_values = np.zeros(self._ring_client.num_leds)
         self._last_time = 0
         self._falloff = 64

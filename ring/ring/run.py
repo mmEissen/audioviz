@@ -4,9 +4,9 @@ import os
 
 import audio_tools
 import config
-from airpixel import client as air_client
 import profiler
-from effects import CircularFourierEffect, FadingCircularEffect
+import effects
+from airpixel import client as air_client
 
 if config.MOCK_RING:
     from PyQt5.QtWidgets import QApplication
@@ -52,7 +52,15 @@ def main() -> None:
     if config.PROFILING_ENABLED:
         profiling_thread.start()
 
-    render_func = FadingCircularEffect(audio_input, client)
+    volume_normalizer = effects.ContiniuousVolumeNormalizer(
+        config.VOLUME_MIN_THRESHOLD,
+        config.VOLUME_FALLOFF,
+    )
+    render_func = effects.FadingCircularEffect(
+        audio_input,
+        client,
+        volume_normalizer,
+    )
 
     loop = air_client.RenderLoop(client, render_func)
     loop.start()
