@@ -53,7 +53,6 @@ class CircularFourierEffect:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
         self._audio_input = audio_input
-        self._audio_input.start()
         self._window_size = window_size
         self._fourier_frequencies = rfftfreq(
             self._audio_input.seconds_to_samples(window_size),
@@ -83,7 +82,6 @@ class CircularFourierEffect:
                 # audio_data
             )
         )  
-
 
     def __call__(self, timestamp):
         audio = np.array(self._audio_input.get_data(length=self._window_size))

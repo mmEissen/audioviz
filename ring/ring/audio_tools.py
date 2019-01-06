@@ -5,6 +5,7 @@ import threading
 import time
 from collections import deque
 import typing as t
+import airpixel.client
 
 import alsaaudio as alsa
 import numpy
@@ -17,7 +18,7 @@ class AudioError(Exception):
     pass
 
 
-class AudioInput:
+class AudioInput(airpixel.client.LoopingThread):
     number_channels = 1
 
     def __init__(
@@ -27,10 +28,10 @@ class AudioInput:
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
     ) -> None:
+        super().__init__(name="audio-capture-thread")
         self.sample_rate = sample_rate
         self.period = sample_rate / period_size * MS_IN_SECOND
         self.sample_delta = 1 / sample_rate
-        self._is_running = False
 
         self._buffer_length = buffer_size * sample_rate // MS_IN_SECOND
         self._buffer_lock = threading.Lock()
@@ -43,21 +44,14 @@ class AudioInput:
         self._mic.setformat(alsa.PCM_FORMAT_U32_LE)
         self._mic.setchannels(self.number_channels)
 
-    def get_data(self, length = 0):
-        num_samples = self.seconds_to_samples(length)
-        return self.get_samples(num_samples)
-    
-    def seconds_to_samples(self, seconds):
-        return int(seconds * self.sample_rate)
-
     def _clear_buffer(self) -> None:
         self._buffer_lock.acquire()
         self._buffer = deque(
-            (0 for _ in range(self._buffer_length)), maxlen=self._buffer_length
+            (0.0 for _ in range(self._buffer_length)), maxlen=self._buffer_length
         )
         self._buffer_lock.release()
 
-    def _audio_loop(self) -> None:
+    def loop(self) -> None:
         length, raw_data = self._mic.read()
 
         try:
@@ -70,18 +64,6 @@ class AudioInput:
         self._buffer.extend(data)
         self._buffer_lock.release()
 
-    def _run(self):
-        self._is_running = True
-        while self._is_running:
-            self._audio_loop()
-
-    def start(self) -> None:
-        thread = threading.Thread(target=self._run, name="audio-capture-thread")
-        thread.start()
-
-    def stop(self):
-        self._is_running = False
-
     def get_samples(self, num_samples):
         self._buffer_lock.acquire()
         buffer_copy = [
@@ -89,3 +71,10 @@ class AudioInput:
         ]
         self._buffer_lock.release()
         return buffer_copy
+
+    def get_data(self, length = 0):
+        num_samples = self.seconds_to_samples(length)
+        return self.get_samples(num_samples)
+    
+    def seconds_to_samples(self, seconds):
+        return int(seconds * self.sample_rate)
