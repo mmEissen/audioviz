@@ -4,16 +4,12 @@ import os
 
 import audio_tools
 import config
-import profiler
 import effects
 from airpixel import client as air_client
 
 if config.MOCK_RING:
     from PyQt5.QtWidgets import QApplication
     from airpixel import qt5_client
-
-if config.MOCK_AUDIO:
-    import mock_audio
 
 
 def qtmock_client_and_wait():
@@ -42,15 +38,8 @@ def main() -> None:
     else:
         client, wait = client_and_wait()
 
-    if config.MOCK_AUDIO:
-        audio_input = mock_audio.MockSinInput()
-    else:
-        audio_input = audio_tools.AudioInput()
-
-    profiling_thread = profiler.ProfilingTread()
-    profiler.Profiler.enabled = config.PROFILING_ENABLED
-    if config.PROFILING_ENABLED:
-        profiling_thread.start()
+    audio_input = audio_tools.AudioInput()
+    audio_input.start()
 
     volume_normalizer = effects.ContiniuousVolumeNormalizer(
         config.VOLUME_MIN_THRESHOLD,
@@ -68,7 +57,6 @@ def main() -> None:
     return_code = wait(loop)
 
     loop.stop()
-    profiling_thread.stop()
     sys.exit(return_code)
 
 

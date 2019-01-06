@@ -8,9 +8,8 @@ matplotlib.use("agg")
 from scipy import ndimage
 
 import a_weighting_table
-from audio_tools import AbstractAudioInput
+from audio_tools import AudioInput
 from airpixel.client import AbstractClient, Pixel
-from profiler import Profiler
 
 
 class ContiniuousVolumeNormalizer:
@@ -31,7 +30,6 @@ class ContiniuousVolumeNormalizer:
             )
         self._last_call = timestamp
 
-    @Profiler.profile
     def normalize(self, signal, timestamp):
         if self._last_call == 0:
             self._last_call = timestamp
@@ -47,7 +45,7 @@ class CircularFourierEffect:
 
     def __init__(
         self,
-        audio_input: AbstractAudioInput,
+        audio_input: AudioInput,
         ring_client: AbstractClient,
         signal_normalizer: ContiniuousVolumeNormalizer,
         window_size=0.04,
@@ -78,7 +76,6 @@ class CircularFourierEffect:
         )
         self._signal_normalizer = signal_normalizer
 
-    @Profiler.profile
     def _frequencies(self, audio_data):
         return np.absolute(
             fourier_transform(
@@ -88,7 +85,6 @@ class CircularFourierEffect:
         )  
 
 
-    @Profiler.profile
     def __call__(self, timestamp):
         audio = np.array(self._audio_input.get_data(length=self._window_size))
         measured_frequencies = self._frequencies(audio)
@@ -105,7 +101,7 @@ class CircularFourierEffect:
 class FadingCircularEffect(CircularFourierEffect):
     def __init__(
         self,
-        audio_input: AbstractAudioInput,
+        audio_input: AudioInput,
         ring_client: AbstractClient,
         signal_normalizer: ContiniuousVolumeNormalizer,
         window_size=0.1,
