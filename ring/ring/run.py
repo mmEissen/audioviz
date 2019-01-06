@@ -31,10 +31,10 @@ def watch_threads(loop_threads):
     try:
         print("Press Ctrl-C to stop")
         while True:
+            print("{:>5.1f}".format(loop_threads[0].avg_frame_time * 1000), end="\r")
             if not all(thread.is_alive() for thread in loop_threads):
                 print("A thread crashed! Quitting.")
                 break
-            print("{:>5.1f}".format(loop.avg_frame_time * 1000), end="\r")
     except (KeyboardInterrupt, SystemExit):
         print("Quitting gracefully...")
     finally:
