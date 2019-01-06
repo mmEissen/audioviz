@@ -1,4 +1,5 @@
 import typing as t
+import time
 import sys
 import os
 
@@ -31,6 +32,7 @@ def watch_threads(loop_threads):
     try:
         print("Press Ctrl-C to stop")
         while True:
+            time.sleep(0.1)
             if not all(thread.is_alive() for thread in loop_threads):
                 print("A thread crashed! Quitting.")
                 break
