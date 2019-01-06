@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "e2a75232d8dd539928208fdb6c5e67805eb35ecd965c63be642aae01c5816902"
+            "sha256": "d5712e59db516dfec5320302315eba554069b8fc00bbefd8790ee7c7454445df"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -18,10 +18,10 @@
     "default": {
         "airpixel": {
             "hashes": [
-                "sha256:35df4c5b1da8574f003b10d2840314ea8cab8f19adff7e8cf9205675058a3f59"
+                "sha256:5c7db0659738bbe44245e30d09c31ae03036dad5c3cf3ebf9ec2927f23d2fa92"
             ],
             "index": "pypi",
-            "version": "==0.5.0"
+            "version": "==0.5.1"
         },
         "cycler": {
             "hashes": [

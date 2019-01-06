@@ -8,7 +8,7 @@ numpy = "*"
 pyalsaaudio = "*"
 scipy = "*"
 matplotlib = "*"
-airpixel = ">=0.3"
+airpixel = ">=0.5.1"
 
 [dev-packages]
 pytest = "*"
