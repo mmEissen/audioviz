@@ -15,7 +15,7 @@ if config.MOCK_RING:
 def qtmock_client_and_wait():
     application = QApplication(sys.argv)
     client = qt5_client.Qt5Client(config.NUM_LEDS)
-    def wait(loop) -> int:
+    def wait(loop_threads) -> int:
         return application.exec_()
     return client, wait
 
@@ -24,12 +24,22 @@ def client_and_wait():
     print(__file__)
     client = air_client.AirClient(config.PORT, config.PORT + 1, config.NUM_LEDS)
 
-    def wait(loop) -> int:
-        while True:
-            print("{:>5.1f}".format(loop.avg_frame_time * 1000), end="\r")
-        return 0
+    return client, watch_threads
 
-    return client, wait
+
+def watch_threads(loop_threads):
+    try:
+        print("Press Ctrl-C to stop")
+        while True:
+            if not all(thread.is_alive() for thread in loop_threads):
+                print("A thread crashed! Quitting.")
+                break
+    except (KeyboardInterrupt, SystemExit):
+        print("Quitting gracefully...")
+    finally:
+        for thread in loop_threads:
+            thread.stop()
+        return 0
 
 
 def main() -> None:
@@ -54,9 +64,8 @@ def main() -> None:
     loop = air_client.RenderLoop(client, render_func)
     loop.start()
 
-    return_code = wait(loop)
+    return_code = wait([loop, audio_input])
 
-    loop.stop()
     sys.exit(return_code)
 
 
