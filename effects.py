@@ -1,5 +1,4 @@
 import typing as t
-from itertools import count
 
 import numpy as np
 from numpy.fft import rfft as fourier_transform, rfftfreq
@@ -40,7 +39,7 @@ class ContiniuousVolumeNormalizer:
         return signal * 0
 
 
-class CircularFourierEffect:
+class FadingCircularEffect:
     _octaves = 8
 
     def __init__(
@@ -48,7 +47,7 @@ class CircularFourierEffect:
         audio_input: AudioInput,
         ring_client: AbstractClient,
         signal_normalizer: ContiniuousVolumeNormalizer,
-        window_size=0.04,
+        window_size=0.1,
     ) -> None:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
@@ -70,18 +69,14 @@ class CircularFourierEffect:
             a_weighting_table.frequencies,
             a_weighting_table.weights,
         )
-        self._hanning_window = np.hanning(
-            self._audio_input.seconds_to_samples(window_size)
-        )
         self._signal_normalizer = signal_normalizer
+        self._last_values = np.zeros(self._ring_client.num_leds)
+        self._last_time = 0
+        self._falloff = 64
+        self._color_rotation_period = 180
 
     def _frequencies(self, audio_data):
-        return np.absolute(
-            fourier_transform(
-                np.multiply(audio_data, self._hanning_window),
-                # audio_data
-            )
-        )  
+        return np.absolute(fourier_transform(audio_data))
 
     def __call__(self, timestamp):
         audio = np.array(self._audio_input.get_data(length=self._window_size))
@@ -94,26 +89,6 @@ class CircularFourierEffect:
         frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
         f = self._to_colors(frequencies, timestamp)
         return f
-
-
-class FadingCircularEffect(CircularFourierEffect):
-    def __init__(
-        self,
-        audio_input: AudioInput,
-        ring_client: AbstractClient,
-        signal_normalizer: ContiniuousVolumeNormalizer,
-        window_size=0.1,
-    ) -> None:
-        super().__init__(
-            audio_input,
-            ring_client,
-            signal_normalizer,
-            window_size,
-        )
-        self._last_values = np.zeros(self._ring_client.num_leds)
-        self._last_time = 0
-        self._falloff = 64
-        self._color_rotation_period = 180
 
     def _combine_values(self, new_values, timestamp):
         diff = timestamp - self._last_time
