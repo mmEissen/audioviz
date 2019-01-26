@@ -40,14 +40,16 @@ class ContiniuousVolumeNormalizer:
 
 
 class FadingCircularEffect:
-    _octaves = 8
-
     def __init__(
         self,
         audio_input: AudioInput,
         ring_client: AbstractClient,
         signal_normalizer: ContiniuousVolumeNormalizer,
-        window_size=0.1,
+        window_size: float=0.1,
+        first_octave: int = 4,
+        number_octaves: int = 8,
+        falloff: float = 64,
+        color_rotation_period: float = 180,
     ) -> None:
         self._bins_per_octave = ring_client.num_leds
         self._ring_client = ring_client
@@ -59,8 +61,8 @@ class FadingCircularEffect:
         )
         self._sample_points = np.exp2(
             (
-                np.arange(self._ring_client.num_leds * self._octaves)
-                + self._ring_client.num_leds * 4
+                np.arange(self._ring_client.num_leds * number_octaves)
+                + self._ring_client.num_leds * first_octave
             )
             / self._ring_client.num_leds
         )
@@ -72,8 +74,8 @@ class FadingCircularEffect:
         self._signal_normalizer = signal_normalizer
         self._last_values = np.zeros(self._ring_client.num_leds)
         self._last_time = 0
-        self._falloff = 64
-        self._color_rotation_period = 180
+        self._falloff = falloff
+        self._color_rotation_period = color_rotation_period
 
     def _frequencies(self, audio_data):
         return np.absolute(fourier_transform(audio_data))

@@ -9,16 +9,7 @@ import effects
 from airpixel import client as air_client
 
 if config.MOCK_RING:
-    from PyQt5.QtWidgets import QApplication
     from airpixel import qt5_client
-
-
-def qtmock_client_and_wait():
-    application = QApplication(sys.argv)
-    client = qt5_client.Qt5Client(config.NUM_LEDS)
-    def wait(loop_threads) -> int:
-        return application.exec_()
-    return client, wait
 
 
 def client_and_wait():
@@ -45,10 +36,7 @@ def watch_threads(loop_threads):
 
 
 def main() -> None:
-    if config.MOCK_RING:
-        client, wait = qtmock_client_and_wait()
-    else:
-        client, wait = client_and_wait()
+    client, wait = client_and_wait()
 
     audio_input = audio_tools.AudioInput()
     audio_input.start()
@@ -61,6 +49,11 @@ def main() -> None:
         audio_input,
         client,
         volume_normalizer,
+        window_size=config.WINDOW_SIZE_SEC,
+        first_octave=config.FIRST_OCTAVE,
+        number_octaves=config.NUMBER_OCTAVES,
+        falloff=config.FADE_FALLOFF,
+        color_rotation_period=config.COLOR_RATATION_PERIOD,
     )
 
     loop = air_client.RenderLoop(client, render_func)
