@@ -44,6 +44,7 @@ def main() -> None:
     volume_normalizer = effects.ContiniuousVolumeNormalizer(
         config.VOLUME_MIN_THRESHOLD,
         config.VOLUME_FALLOFF,
+        config.VOLUME_DEBUG,
     )
     render_func = effects.FadingCircularEffect(
         audio_input,

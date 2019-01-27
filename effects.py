@@ -12,15 +12,18 @@ from airpixel.client import AbstractClient, Pixel
 
 
 class ContiniuousVolumeNormalizer:
-    def __init__(self, min_threshold=0.001, falloff=32) -> None:
+    def __init__(self, min_threshold=0.001, falloff=32, debug=False) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
         self._last_call = 0
+        self._debug = debug
 
     def _update_threshold(self, max_sample, timestamp):
         if max_sample >= self._current_threshold:
             self._current_threshold = max_sample
+            if self._debug:
+                print(self._current_threshold)
         else:
             target_threshold = max_sample
             factor = 1 / self._falloff ** (timestamp - self._last_call)
