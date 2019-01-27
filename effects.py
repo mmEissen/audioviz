@@ -91,8 +91,8 @@ class FadingCircularEffect:
         )
         weighted_frequencies = sampled_frequencies ** 2 * self._a_weighting
         normalized = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
-        frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
-        f = self._to_colors(frequencies, timestamp)
+        # frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
+        f = self._to_colors(normalized, timestamp)
         return f
 
     def _combine_values(self, new_values, timestamp):
