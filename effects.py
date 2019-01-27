@@ -22,8 +22,6 @@ class ContiniuousVolumeNormalizer:
     def _update_threshold(self, max_sample, timestamp):
         if max_sample >= self._current_threshold:
             self._current_threshold = max_sample
-            if self._debug:
-                print(self._current_threshold)
         else:
             target_threshold = max_sample
             factor = 1 / self._falloff ** (timestamp - self._last_call)
@@ -38,6 +36,8 @@ class ContiniuousVolumeNormalizer:
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
         if self._current_threshold >= self._min_threshold:
+            if self._debug:
+                print(self._current_threshold)
             return signal / self._current_threshold
         return signal * 0
 
@@ -91,7 +91,6 @@ class FadingCircularEffect:
         )
         weighted_frequencies = sampled_frequencies ** 2 * self._a_weighting
         normalized = self._signal_normalizer.normalize(weighted_frequencies, timestamp)
-        # frequencies = np.clip(np.log10(np.clip(normalized * 10, 0.9, 10)), 0, 1)
         f = self._to_colors(normalized, timestamp)
         return f
 
