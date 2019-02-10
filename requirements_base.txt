@@ -3,3 +3,4 @@ pyalsaaudio
 scipy
 matplotlib
 airpixel>=0.5.1
+pypiper

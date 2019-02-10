@@ -28,12 +28,12 @@ class AudioInput(airpixel.client.LoopingThread):
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
     ) -> None:
-        super().__init__(name="audio-capture-thread")
+        super().__init__(name="audio-capture-thread", daemon=True)
         self.sample_rate = sample_rate
         self.period = sample_rate / period_size * MS_IN_SECOND
         self.sample_delta = 1 / sample_rate
 
-        self._buffer_length = buffer_size * sample_rate // MS_IN_SECOND
+        self.buffer_length = buffer_size * sample_rate // MS_IN_SECOND
         self._buffer_lock = threading.Lock()
 
         self._clear_buffer()
@@ -47,7 +47,7 @@ class AudioInput(airpixel.client.LoopingThread):
     def _clear_buffer(self) -> None:
         self._buffer_lock.acquire()
         self._buffer = deque(
-            (0.0 for _ in range(self._buffer_length)), maxlen=self._buffer_length
+            (0.0 for _ in range(self.buffer_length)), maxlen=self.buffer_length
         )
         self._buffer_lock.release()
 
