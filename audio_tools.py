@@ -41,7 +41,7 @@ class AudioInput(airpixel.client.LoopingThread):
         self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
         self._mic.setperiodsize(period_size)
         self._mic.setrate(sample_rate)
-        self._mic.setformat(alsa.PCM_FORMAT_U32_LE)
+        self._mic.setformat(alsa.PCM_FORMAT_FLOAT_LE)
         self._mic.setchannels(self.number_channels)
 
     def _clear_buffer(self) -> None:
@@ -55,7 +55,7 @@ class AudioInput(airpixel.client.LoopingThread):
         length, raw_data = self._mic.read()
 
         try:
-            data = (float(value) for value, in struct.iter_unpack("<L", raw_data))
+            data = (float(value) for value, in struct.iter_unpack("<f", raw_data))
         except struct.error as error:
             self._clear_buffer()
             return

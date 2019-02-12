@@ -1,23 +1,22 @@
-import numpy as np
-from numpy.fft import rfft as fourier_transform, rfftfreq
-from pyPiper import Node, Pipeline
-
 import threading
 
-import audio_tools
+import numpy as np
+import pyqtgraph as graph
+from numpy.fft import rfft as fourier_transform, rfftfreq
+from pyPiper import Node, Pipeline
+from pyqtgraph.Qt import QtGui, QtCore
+from scipy import ndimage
 
 import a_weighting_table
-
-from pyqtgraph.Qt import QtGui, QtCore
-import pyqtgraph as graph
-
+import audio_tools
 
 
 class PlottableNode(Node):
-    def setup(self, window):
+    def setup(self, window=None):
         if window is None:
             self.plot = self._no_plot
             return
+        self._current_max_y = 0
         self.setup_plot(window)
 
     def setup_plot(self, window):
@@ -28,11 +27,18 @@ class PlottableNode(Node):
     def _no_plot(self, data):
         pass
 
+    def _fit_plot(self, points):
+        self._current_max_y = max(max(points), self._current_max_y)
+        self._plot.setRange(yRange=(0, self._current_max_y))
+
     def plot(self, data):
         if isinstance(data, tuple):
+            _, points = data
             self._curve.setData(*data)
         else:
+            points = data
             self._curve.setData(data)
+        self._fit_plot(points)
 
     def emit(self, data):
         self.plot(data)
@@ -55,21 +61,17 @@ class AudioGenerator(PlottableNode):
 class FastFourierTransform(PlottableNode):
     def setup(self, samples, sample_delta, window=None):
         super().setup(window)
-        self._fourier_frequencies = rfftfreq(
+        self.sample_delta = sample_delta
+        self.fourier_frequencies = rfftfreq(
             samples,
             d=sample_delta,
         )
-    
-    def setup_plot(self, window):
-        super().setup_plot(window)
-        self._plot.setLogMode(x=True, y=False)
-        self._plot.setRange(yRange=(0, 2e11))
 
     def run(self, data):
         self.emit(
             (
-                self._fourier_frequencies,
-                np.absolute(fourier_transform(data)),
+                self.fourier_frequencies,
+                np.absolute(fourier_transform(data) * self.sample_delta),
             )
         )
 
@@ -84,24 +86,16 @@ class OctaveSubsampler(PlottableNode):
             )
             / samples_per_octave
         )
-    
-    def setup_plot(self, window):
-        super().setup_plot(window)
-        self._plot.setLogMode(x=True, y=False)
-        self._plot.setRange(yRange=(0, 2e22))
-    
+
     def run(self, data):
         frequencies, values = data
         self.emit(
-            (
+            np.interp(
                 self._sample_points,
-                np.interp(
-                    self._sample_points,
-                    frequencies,
-                    values,
-                    left=0,
-                    right=0,
-                ) ** 2,
+                frequencies,
+                values,
+                left=0,
+                right=0,
             )
         )
 
@@ -113,7 +107,6 @@ class AWeighting(PlottableNode):
     def setup_plot(self, window):
         super().setup_plot(window)
         self._plot.setLogMode(x=True, y=False)
-        self._plot.setRange(yRange=(0, 1e22))
 
     def run(self, data):
         frequencies, values = data
@@ -125,9 +118,65 @@ class AWeighting(PlottableNode):
         self.emit(
             (
                 frequencies,
-                values * weights,
+                values / weights,
             )
         )
+
+
+class Gaussian(PlottableNode):
+    def setup(self, sigma, window=None):
+        self._sigma = sigma
+        super().setup(window)
+    
+    def setup_plot(self, window):
+        super().setup_plot(window)
+        self._plot.setLogMode(x=True, y=False)
+
+    def run(self, data):
+        self.emit(
+            ndimage.gaussian_filter(data, sigma=self._sigma),
+        )
+
+
+class Square(PlottableNode):
+    def run(self, data):
+        self.emit(
+            data ** 2,
+        )
+
+class FoldingNode(PlottableNode):
+    def setup(self, num_octaves, window=None):
+        self._num_octaves = num_octaves
+        super().setup(window)
+
+    def setup_plot(self, window):
+        window.nextRow()
+        self._plot = window.addPlot(title=self.name)
+        self._curves = [
+            self._plot.plot(pen=(i / self._num_octaves * 255, (1 - i / self._num_octaves) * 255, 255))
+            for i in range(self._num_octaves)
+        ]
+    
+    def plot(self, data):
+        for sub_data, curve in zip(data, self._curves):
+            curve.setData(sub_data)
+            self._fit_plot(sub_data)
+
+    def run(self, data):
+        wrapped = np.reshape(data, (self._num_octaves, -1))
+        self.emit(wrapped)
+
+
+class SumMatrixVertical(PlottableNode):
+    def run(self, data):
+        self.emit(
+            np.add.reduce(data),
+        )
+
+
+class NaturalLogarithm(PlottableNode):
+    def run(self, data):
+        self.emit(np.log(data + 1))
 
 
 class Void(Node):
@@ -149,16 +198,22 @@ window.setWindowTitle("Audio")
 graph.setConfigOptions(antialias=True)
 
 
-audio_input = audio_tools.AudioInput()
+audio_input = audio_tools.AudioInput(sample_rate=176400)
 audio_input.start()
 
-samples = audio_input.seconds_to_samples(0.03)
+samples = audio_input.seconds_to_samples(0.07)
+octaves = 8
 
 pipeline = Pipeline(
     AudioGenerator("mic", audio_input=audio_input, samples=samples, window=window)
-    | FastFourierTransform("fft", samples=samples, sample_delta=audio_input.sample_delta, window=window)
-    | OctaveSubsampler("oct", start_octave=6, samples_per_octave=60, num_octaves=7, window=window)
-    | AWeighting("a-weighting", window=window)
+    | FastFourierTransform("fft", samples=samples, sample_delta=audio_input.sample_delta, window=None)
+    | OctaveSubsampler("sampled", start_octave=6, samples_per_octave=60, num_octaves=octaves, window=None)
+    # | AWeighting("a-weighting", window=None)
+    | Gaussian("smoothed", sigma=1, window=window)
+    | Square("square", window=None)
+    | NaturalLogarithm("log", window=window)
+    | FoldingNode("folded", num_octaves=octaves, window=None)
+    | SumMatrixVertical("sum", window=window)
     | Void("void")
 )
 
