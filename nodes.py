@@ -2,7 +2,10 @@ import time
 import threading
 
 import numpy as np
+import matplotlib
+matplotlib.use("agg")
 import pyqtgraph as graph
+from airpixel import client as air_client
 from numpy.fft import rfft as fourier_transform, rfftfreq
 from pyPiper import Node, Pipeline
 from pyqtgraph.Qt import QtGui, QtCore
@@ -13,7 +16,7 @@ import audio_tools
 
 
 class ContiniuousVolumeNormalizer:
-    def __init__(self, min_threshold=0, falloff=8) -> None:
+    def __init__(self, min_threshold=0, falloff=1.1) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
@@ -195,6 +198,12 @@ class SumMatrixVertical(PlottableNode):
             np.add.reduce(data),
         )
 
+class MaxMatrixVertical(PlottableNode):
+    def run(self, data):
+        self.emit(
+            np.maximum.reduce(data),
+        )
+
 
 class NaturalLogarithm(PlottableNode):
     def run(self, data):
@@ -208,6 +217,53 @@ class Normalizer(PlottableNode):
     
     def run(self, data):
         self.emit(self.normalizer.normalize(data, time.time()))
+
+
+class Fade(PlottableNode):
+    def setup(self, falloff, window=None):
+        super().setup(window=window)
+        self._falloff = falloff
+        self.last_data = None
+        self.last_update = None
+
+    def run(self, data):
+        now = time.time()
+        if self.last_data is None:
+            self.last_data = data
+            self.last_update = now
+            return
+        diff = now - self.last_update
+        self.last_update = now
+        factor = 1 / self._falloff ** (diff) if diff < 2 else 0
+        self.last_data = self.last_data * factor
+        self.last_data = np.maximum(self.last_data, data)
+        self.emit(self.last_data)
+
+
+class Ring(Node):
+    def setup(self, port, num_leds, color_rotation_period):
+        self._color_rotation_period = color_rotation_period
+        self.client = air_client.AirClient(port, port + 1, num_leds)
+        self.client.connect()
+    
+    def _values_to_rgb(self, values, timestamp):
+        hue = np.full(
+            values.shape, 
+            (timestamp % self._color_rotation_period) / self._color_rotation_period,
+        )
+        saturation = np.clip(values * (-2), -2, -1) + 2
+        values_color = np.clip(values * 2, 0, 1)
+        hsvs = np.transpose(np.array((hue, saturation, values_color)))
+        rgbs = matplotlib.colors.hsv_to_rgb(hsvs)
+        return rgbs
+
+    def run(self, data):
+        frame = [
+            air_client.Pixel(g, r, b)
+            for r, g, b in self._values_to_rgb(data, time.time())
+        ]
+        self.client.set_frame(frame)
+        self.client.show()
 
 
 class Void(Node):
@@ -241,14 +297,16 @@ pipeline = Pipeline(
     AudioGenerator("mic", audio_input=audio_input, samples=samples, window=window)
     | fft_node
     | AWeighting("a-weighting", frequencies=fft_node.fourier_frequencies, window=None)
-    | Square("square", window=None)
-    | NaturalLogarithm("log", window=None)
     | Gaussian("smoothed", sigma=1, window=None)
     | OctaveSubsampler("sampled", start_octave=5, samples_per_octave=60, num_octaves=octaves, frequencies=fft_node.fourier_frequencies, window=None)
     | FoldingNode("folded", num_octaves=octaves, window=None)
-    | SumMatrixVertical("sum", window=window)
+    | SumMatrixVertical("sum", window=None)
+    | Square("square", window=None)
+    # | MaxMatrixVertical("max", window=window)
+    | NaturalLogarithm("log", window=None)
     | Normalizer("normalized", window=window)
-    | Void("void")
+    | Fade("fade", falloff=32, window=window)
+    | Ring("ring", port=50000, num_leds=60, color_rotation_period=180)
 )
 
 audio_pipeline = threading.Thread(
