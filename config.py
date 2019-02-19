@@ -3,7 +3,7 @@ import os
 
 VISUALIZE = bool(os.environ.get("RING_VISUALIZE", False))
 
-SAMPLE_RATE = int(os.environ.get("RING_SAMPLE_RAtE", 176400))
+SAMPLE_RATE = int(os.environ.get("RING_SAMPLE_RATE", 176400))
 
 PORT = int(os.environ.get("RING_PORT", 50000))
 NUM_LEDS = int(os.environ.get("RING_NUM_LEDS", 60))
