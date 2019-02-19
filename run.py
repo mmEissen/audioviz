@@ -6,7 +6,6 @@ import sys
 import os
 
 import audio_tools
-import effects
 import threading
 from airpixel import client as air_client
 from pyPiper import Pipeline
