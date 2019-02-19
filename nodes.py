@@ -256,6 +256,12 @@ class Ring(Node):
         hsvs = np.transpose(np.array((hue, saturation, values_color)))
         rgbs = matplotlib.colors.hsv_to_rgb(hsvs)
         return rgbs
+    
+    def attempt_connect(self):
+        try:
+            self.client.connect()
+        except air_client.ConnectionFailedError:
+            pass
 
     def run(self, data):
         frame = [
@@ -263,7 +269,10 @@ class Ring(Node):
             for r, g, b in self._values_to_rgb(data, time.time())
         ]
         self.client.set_frame(frame)
-        self.client.show()
+        try:
+            self.client.show()
+        except air_client.NotConnectedError:
+            self.attempt_connect()
 
 
 class Void(Node):
