@@ -4,11 +4,9 @@ import threading
 import numpy as np
 import matplotlib
 matplotlib.use("agg")
-import pyqtgraph as graph
 from airpixel import client as air_client
 from numpy.fft import rfft as fourier_transform, rfftfreq
 from pyPiper import Node, Pipeline
-from pyqtgraph.Qt import QtGui, QtCore
 from scipy import ndimage
 
 import a_weighting_table
