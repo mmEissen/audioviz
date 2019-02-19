@@ -1,68 +1,63 @@
+import config
+
 import typing as t
 import time
 import sys
 import os
 
 import audio_tools
-import config
 import effects
+import threading
 from airpixel import client as air_client
+from pyPiper import Pipeline
 
-if config.MOCK_RING:
-    from airpixel import qt5_client
+if config.VISUALIZE:
+    import pyqtgraph as graph
+    from pyqtgraph.Qt import QtGui, QtCore
 
-
-def client_and_wait():
-    print(__file__)
-    client = air_client.AirClient(config.PORT, config.PORT + 1, config.NUM_LEDS)
-
-    return client, watch_threads
-
-
-def watch_threads(loop_threads):
-    try:
-        print("Press Ctrl-C to stop")
-        while True:
-            time.sleep(0.1)
-            if not all(thread.is_alive() for thread in loop_threads):
-                print("A thread crashed! Quitting.")
-                break
-    except (KeyboardInterrupt, SystemExit):
-        print("Quitting gracefully...")
-    finally:
-        for thread in loop_threads:
-            thread.stop()
-        return 0
+import nodes
 
 
 def main() -> None:
-    client, wait = client_and_wait()
+    if config.VISUALIZE:
+        app = QtGui.QApplication([])
+        window = graph.GraphicsWindow(title="Audio")
+        window.resize(1800,600)
+        window.setWindowTitle("Audio")
+    else:
+        window = None
 
-    audio_input = audio_tools.AudioInput()
+    audio_input = audio_tools.AudioInput(sample_rate=config.SAMPLE_RATE)
     audio_input.start()
 
-    volume_normalizer = effects.ContiniuousVolumeNormalizer(
-        config.VOLUME_MIN_THRESHOLD,
-        config.VOLUME_FALLOFF,
-        config.VOLUME_DEBUG,
+    samples = audio_input.seconds_to_samples(config.WINDOW_SIZE_SEC)
+    fft_node = nodes.FastFourierTransform("fft", samples=samples, sample_delta=audio_input.sample_delta, window=None)
+
+    pipeline = Pipeline(
+        nodes.AudioGenerator("mic", audio_input=audio_input, samples=samples, window=window)
+        | fft_node
+        | nodes.AWeighting("a-weighting", frequencies=fft_node.fourier_frequencies, window=None)
+        | nodes.Gaussian("smoothed", sigma=1, window=None)
+        | nodes.OctaveSubsampler("sampled", start_octave=5, samples_per_octave=config.NUM_LEDS, num_octaves=config.NUM_OCTAVES, frequencies=fft_node.fourier_frequencies, window=None)
+        | nodes.FoldingNode("folded", num_octaves=config.NUM_OCTAVES, window=None)
+        | nodes.SumMatrixVertical("sum", window=None)
+        | nodes.Square("square", window=None)
+        # | MaxMatrixVertical("max", window=window)
+        | nodes.NaturalLogarithm("log", window=None)
+        | nodes.Normalizer("normalized", window=window)
+        | nodes.Fade("fade", falloff=config.FADE_FALLOFF, window=window)
+        | nodes.Ring("ring", port=config.PORT, num_leds=config.NUM_LEDS, color_rotation_period=config.COLOR_RATATION_PERIOD)
     )
-    render_func = effects.FadingCircularEffect(
-        audio_input,
-        client,
-        volume_normalizer,
-        window_size=config.WINDOW_SIZE_SEC,
-        first_octave=config.FIRST_OCTAVE,
-        number_octaves=config.NUMBER_OCTAVES,
-        falloff=config.FADE_FALLOFF,
-        color_rotation_period=config.COLOR_RATATION_PERIOD,
-    )
 
-    loop = air_client.RenderLoop(client, render_func)
-    loop.start()
-
-    return_code = wait([loop, audio_input])
-
-    sys.exit(return_code)
+    if config.VISUALIZE:
+        audio_pipeline = threading.Thread(
+            target=pipeline.run,
+            daemon=True,
+        )
+        audio_pipeline.start()
+        app.exec_()
+    else:
+        pipeline.run()
 
 
 if __name__ == "__main__":
