@@ -43,7 +43,7 @@ def main() -> None:
         | nodes.Square("square", window=None)
         # | MaxMatrixVertical("max", window=window)
         | nodes.NaturalLogarithm("log", window=None)
-        | nodes.Normalizer("normalized", window=window)
+        | nodes.Normalizer("normalized", min_threshold=config.VOLUME_MIN_THRESHOLD, falloff=config.VOLUME_FALLOFF, window=window)
         | nodes.Fade("fade", falloff=config.FADE_FALLOFF, window=window)
         | nodes.Ring("ring", port=config.PORT, num_leds=config.NUM_LEDS, color_rotation_period=config.COLOR_RATATION_PERIOD)
     )

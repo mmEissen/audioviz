@@ -38,7 +38,7 @@ class ContiniuousVolumeNormalizer:
         self._update_threshold(max_sample, timestamp)
         if self._current_threshold >= self._min_threshold:
             return signal / self._current_threshold
-        return signal * 0
+        return np.zeros_like(signal)
 
 
 class PlottableNode(Node):
@@ -209,9 +209,12 @@ class NaturalLogarithm(PlottableNode):
 
 
 class Normalizer(PlottableNode):
-    def setup(self, window=None):
+    def setup(self, min_threshold=0, falloff=1.1, window=None):
         super().setup(window=window)
-        self.normalizer = ContiniuousVolumeNormalizer()
+        self.normalizer = ContiniuousVolumeNormalizer(
+            min_threshold=min_threshold,
+            falloff=falloff,
+        )
     
     def run(self, data):
         self.emit(self.normalizer.normalize(data, time.time()))
