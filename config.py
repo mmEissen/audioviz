@@ -5,14 +5,14 @@ VISUALIZE = bool(os.environ.get("RING_VISUALIZE", False))
 
 SAMPLE_RATE = int(os.environ.get("RING_SAMPLE_RATE", 176400))
 
-PORT = int(os.environ.get("RING_PORT", 50000))
+PORT = int(os.environ.get("RING_PORT", 50002))
 NUM_LEDS = int(os.environ.get("RING_NUM_LEDS", 60))
 
 VOLUME_MIN_THRESHOLD = float(os.environ.get("RING_VOLUME_MIN", 0))
 VOLUME_FALLOFF = float(os.environ.get("RING_VOLUME_FALLOFF", 1.1))
 VOLUME_DEBUG = bool(os.environ.get("RING_VOLUME_DEBUG", 0))
 
-FADE_FALLOFF = float(os.environ.get("RING_FADE_FALLOFF", 32))
+FADE_FALLOFF = float(os.environ.get("RING_FADE_FALLOFF", 256))
 COLOR_RATATION_PERIOD = float(os.environ.get("RING_COLOR_ROTATION_PERIOD", 180))
 
 FIRST_OCTAVE = int(os.environ.get("RING_FIRST_OCTAVE", 5))

@@ -3,6 +3,7 @@ import threading
 
 import numpy as np
 import matplotlib
+import math
 
 matplotlib.use("agg")
 
@@ -230,8 +231,7 @@ class Fade(PlottableNode):
 class Ring(Node):
     def setup(self, port, num_leds, color_rotation_period):
         self._color_rotation_period = color_rotation_period
-        self.client = air_client.AirClient(port, port + 1, num_leds, )
-        self.client.connect()
+        self.client = air_client.AirClient(port, port + 1, num_leds)
 
     def _values_to_rgb(self, values, timestamp):
         hue = np.full(
@@ -260,6 +260,54 @@ class Ring(Node):
             self.client.show()
         except air_client.NotConnectedError:
             self.attempt_connect()
+
+
+class Sun(Ring):
+    def setup(self, port, led_per_strip, num_strips):
+        self.client = air_client.AirClient(
+            port,
+            port + 1,
+            led_per_strip * num_strips,
+            color_method=air_client.ColorMethod.GRB,
+        )
+        self._led_per_strip = led_per_strip
+        self._resolution = led_per_strip * 8
+        self._pre_computed_strips = self._pre_compute_strips(
+            np.array([0.1, 0.2, 0.2]), self._resolution
+        )
+        self._index_mask = np.zeros(num_strips, dtype="int")
+        self._index_mask[1::2] = self._resolution
+
+    def _make_strip(self, value, color):
+        scaled_value = value * self._led_per_strip
+        return np.array(
+            [color for _ in range(math.floor(scaled_value))]
+            + [color * (scaled_value - math.floor(scaled_value))]
+            + [
+                color * 0
+                for _ in range(self._led_per_strip - math.floor(scaled_value) - 1)
+            ]
+        )
+
+    def _make_reverse_strip(self, value, color):
+        return np.flip(self._make_strip(value, color), axis=0)
+
+    def _pre_compute_strips(self, color, resolution):
+        strips = [self._make_strip(i / resolution, color) for i in range(resolution)]
+        reverse = [
+            self._make_reverse_strip(j / resolution, color) for j in range(resolution)
+        ]
+        return np.array(strips + reverse)
+
+    def _values_to_rgb(self, values, timestamp):
+        indexes = (values * 0.999 * self._resolution).astype("int") + self._index_mask
+        return self._pre_computed_strips[indexes].reshape((-1, 3))
+
+    def run(self, data):
+        start_time = time.time()
+        super().run(data)
+        run_time = time.time() - start_time
+        time.sleep(max(0.001, (1/30) - run_time))
 
 
 class Void(Node):

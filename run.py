@@ -42,33 +42,28 @@ def main() -> None:
         | nodes.AWeighting(
             "a-weighting", frequencies=fft_node.fourier_frequencies, window=None
         )
-        | nodes.Gaussian("smoothed", sigma=1, window=None)
         | nodes.OctaveSubsampler(
             "sampled",
             start_octave=5,
-            samples_per_octave=config.NUM_LEDS,
+            samples_per_octave=30,
             num_octaves=config.NUM_OCTAVES,
             frequencies=fft_node.fourier_frequencies,
             window=None,
         )
+        | nodes.Gaussian("smoothed", sigma=1, window=None)
         | nodes.FoldingNode("folded", num_octaves=config.NUM_OCTAVES, window=None)
         | nodes.SumMatrixVertical("sum", window=None)
-        | nodes.Square("square", window=None)
         # | MaxMatrixVertical("max", window=window)
-        | nodes.NaturalLogarithm("log", window=None)
+        # | nodes.NaturalLogarithm("log", window=None)
         | nodes.Normalizer(
             "normalized",
             min_threshold=config.VOLUME_MIN_THRESHOLD,
             falloff=config.VOLUME_FALLOFF,
             window=window,
         )
+        # | nodes.Square("square", window=None)
         | nodes.Fade("fade", falloff=config.FADE_FALLOFF, window=window)
-        | nodes.Ring(
-            "ring",
-            port=config.PORT,
-            num_leds=config.NUM_LEDS,
-            color_rotation_period=config.COLOR_RATATION_PERIOD,
-        )
+        | nodes.Sun("sun", port=config.PORT, led_per_strip=10, num_strips=30)
     )
 
     if config.VISUALIZE:
