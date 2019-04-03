@@ -50,7 +50,7 @@ def main() -> None:
             frequencies=fft_node.fourier_frequencies,
             window=None,
         )
-        | nodes.Gaussian("smoothed", sigma=1, window=None)
+        | nodes.Gaussian("smoothed", sigma=2, window=None)
         | nodes.FoldingNode("folded", num_octaves=config.NUM_OCTAVES, window=None)
         | nodes.SumMatrixVertical("sum", window=None)
         # | MaxMatrixVertical("max", window=window)

@@ -273,13 +273,14 @@ class Sun(Ring):
         self._led_per_strip = led_per_strip
         self._resolution = led_per_strip * 8
         self._pre_computed_strips = self._pre_compute_strips(
-            np.array([0.1, 0.2, 0.2]), self._resolution
+            np.array([0, 0.5, 0.5]), self._resolution
         )
         self._index_mask = np.zeros(num_strips, dtype="int")
         self._index_mask[1::2] = self._resolution
 
     def _make_strip(self, value, color):
         scaled_value = value * self._led_per_strip
+        color = color * (0.5 * value ** 2 + 0.5 * value)
         return np.array(
             [color for _ in range(math.floor(scaled_value))]
             + [color * (scaled_value - math.floor(scaled_value))]
