@@ -247,7 +247,7 @@ class Ring(Node):
     def attempt_connect(self):
         try:
             self.client.connect()
-        except air_client.ConnectionFailedError:
+        except (air_client.ConnectionFailedError, air_client.NoBroadcasterFoundError):
             pass
 
     def run(self, data):
@@ -273,7 +273,7 @@ class Sun(Ring):
         self._led_per_strip = led_per_strip
         self._resolution = led_per_strip * 8
         self._pre_computed_strips = self._pre_compute_strips(
-            np.array([0.8, 0.3, 0.5]), self._resolution
+            np.array([0.7, 0.15, 0.4]), self._resolution
         )
         self._index_mask = np.zeros(num_strips, dtype="int")
         self._index_mask[1::2] = self._resolution
@@ -308,7 +308,7 @@ class Sun(Ring):
         start_time = time.time()
         super().run(data)
         run_time = time.time() - start_time
-        time.sleep(max(0.001, (1/30) - run_time))
+        time.sleep(max(0.0001, (1/30) - run_time))
 
 
 class Void(Node):
