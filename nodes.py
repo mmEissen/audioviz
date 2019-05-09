@@ -17,7 +17,7 @@ import audio_tools
 
 
 class ContiniuousVolumeNormalizer:
-    def __init__(self, min_threshold=0, falloff=1.1) -> None:
+    def __init__(self, min_threshold=1e-6, falloff=1.1) -> None:
         self._min_threshold = min_threshold
         self._falloff = falloff
         self._current_threshold = self._min_threshold
@@ -197,7 +197,7 @@ class NaturalLogarithm(PlottableNode):
 
 
 class Normalizer(PlottableNode):
-    def setup(self, min_threshold=0, falloff=1.1, window=None):
+    def setup(self, min_threshold=1e-6, falloff=1.1, window=None):
         super().setup(window=window)
         self.normalizer = ContiniuousVolumeNormalizer(
             min_threshold=min_threshold, falloff=falloff
@@ -273,7 +273,7 @@ class Sun(Ring):
         self._led_per_strip = led_per_strip
         self._resolution = led_per_strip * 8
         self._pre_computed_strips = self._pre_compute_strips(
-            np.array([0, 0.5, 0.5]), self._resolution
+            np.array([0.8, 0.3, 0.5]), self._resolution
         )
         self._index_mask = np.zeros(num_strips, dtype="int")
         self._index_mask[1::2] = self._resolution
@@ -301,7 +301,7 @@ class Sun(Ring):
         return np.array(strips + reverse)
 
     def _values_to_rgb(self, values, timestamp):
-        indexes = (values * 0.999 * self._resolution).astype("int") + self._index_mask
+        indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self._resolution).astype("int") + self._index_mask
         return self._pre_computed_strips[indexes].reshape((-1, 3))
 
     def run(self, data):
