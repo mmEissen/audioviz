@@ -18,6 +18,8 @@ import nodes
 
 
 def main() -> None:
+    ip_address, port = sys.argv[1:3]
+
     if config.VISUALIZE:
         app = QtGui.QApplication([])
         window = graph.GraphicsWindow(title="Audio")
@@ -65,8 +67,8 @@ def main() -> None:
         | nodes.Fade("fade", falloff=config.FADE_FALLOFF, window=window)
         | nodes.Ring(
             "ring",
-            port=config.PORT,
-            num_leds=config.NUM_LEDS,
+            ip_address=ip_address,
+            port=port,
             color_rotation_period=config.COLOR_RATATION_PERIOD,
         )
     )

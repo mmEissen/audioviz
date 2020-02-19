@@ -38,7 +38,7 @@ class ContiniuousVolumeNormalizer:
             self._last_call = timestamp
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
-        if self._current_threshold >= self._min_threshold:
+        if self._current_threshold >= self._min_threshold and self._current_threshold != 0:
             return signal / self._current_threshold
         return np.zeros_like(signal)
 
@@ -228,10 +228,10 @@ class Fade(PlottableNode):
 
 
 class Ring(Node):
-    def setup(self, port, num_leds, color_rotation_period):
+    def setup(self, color_rotation_period, ip_address, port):
         self._color_rotation_period = color_rotation_period
-        self.client = air_client.AirClient(port, port + 1, num_leds, )
-        self.client.connect()
+        self.client = air_client.AutoClient()
+        self.client.begin(ip_address, int(port), air_client.ColorMethodRGBW)
 
     def _values_to_rgb(self, values, timestamp):
         hue = np.full(
@@ -244,22 +244,12 @@ class Ring(Node):
         rgbs = matplotlib.colors.hsv_to_rgb(hsvs)
         return rgbs
 
-    def attempt_connect(self):
-        try:
-            self.client.connect()
-        except air_client.ConnectionFailedError:
-            pass
-
     def run(self, data):
         frame = [
             air_client.Pixel(r, g, b)
             for r, g, b in self._values_to_rgb(data, time.time())
         ]
-        self.client.set_frame(frame)
-        try:
-            self.client.show()
-        except air_client.NotConnectedError:
-            self.attempt_connect()
+        self.client.show_frame(frame)
 
 
 class Void(Node):
