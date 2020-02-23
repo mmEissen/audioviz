@@ -1,0 +1,14 @@
+[Unit]
+Description=Audioviz
+After=network.target
+
+[Service]
+ExecStart=/home/moritz/audio/.venv/bin/python -m airpixel.framework
+WorkingDirectory=/home/moritz/audio/audioviz/
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=moritz
+
+[Install]
+WantedBy=multi-user.target

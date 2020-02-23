@@ -2,3 +2,5 @@
 pytest
 pylint
 mypy
+pyqt5
+pyqtgraph

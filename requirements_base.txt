@@ -2,7 +2,5 @@ numpy
 pyalsaaudio
 scipy
 matplotlib
-airpixel>=0.5.1
 pypiper
-pyqt5
-pyqtgraph
+-e ../airpixel

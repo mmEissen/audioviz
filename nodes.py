@@ -238,8 +238,8 @@ class Ring(Node):
             values.shape,
             (timestamp % self._color_rotation_period) / self._color_rotation_period,
         )
-        saturation = np.clip(values * (-2), -2, -1) + 2
-        values_color = np.clip(values * 2, 0, 1)
+        saturation = values * -1 + 1
+        values_color = values
         hsvs = np.transpose(np.array((hue, saturation, values_color)))
         rgbs = matplotlib.colors.hsv_to_rgb(hsvs)
         return rgbs
