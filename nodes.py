@@ -226,6 +226,13 @@ class Fade(PlottableNode):
         self.last_data = np.maximum(self.last_data, data)
         self.emit(self.last_data)
 
+class Clip(Node):
+    def setup(self, minimum=0, maximum=1):
+        self.minimum = minimum
+        self.maximum = maximum
+
+    def run(self, data):
+        self.emit(np.clip(data, self.minimum, self.maximum))
 
 class Ring(Node):
     def setup(self, color_rotation_period, ip_address, port):
@@ -234,9 +241,13 @@ class Ring(Node):
         self.client.begin(ip_address, int(port), air_client.ColorMethodRGBW)
 
     def _values_to_rgb(self, values, timestamp):
+        # hue = np.full(
+        #     values.shape,
+        #     (timestamp % self._color_rotation_period) / self._color_rotation_period,
+        # )
         hue = np.full(
             values.shape,
-            (timestamp % self._color_rotation_period) / self._color_rotation_period,
+            0,
         )
         saturation = values * -1 + 1
         values_color = values

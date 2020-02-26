@@ -64,7 +64,8 @@ def main() -> None:
             falloff=config.VOLUME_FALLOFF,
             window=window,
         )
-        # | nodes.Fade("fade", falloff=config.FADE_FALLOFF, window=window)
+        | nodes.Fade("fade", falloff=config.FADE_FALLOFF, window=window)
+        | nodes.Clip("clip", minimum=0.14)
         | nodes.Ring(
             "ring",
             ip_address=ip_address,
