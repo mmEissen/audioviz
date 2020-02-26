@@ -39,6 +39,7 @@ class ContiniuousVolumeNormalizer:
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
         if self._current_threshold >= self._min_threshold and self._current_threshold != 0:
+            print(self._current_threshold)
             return signal / self._current_threshold
         return np.zeros_like(signal)
 
@@ -241,15 +242,11 @@ class Ring(Node):
         self.client.begin(ip_address, int(port), air_client.ColorMethodRGBW)
 
     def _values_to_rgb(self, values, timestamp):
-        # hue = np.full(
-        #     values.shape,
-        #     (timestamp % self._color_rotation_period) / self._color_rotation_period,
-        # )
         hue = np.full(
             values.shape,
-            0,
+            (timestamp % self._color_rotation_period) / self._color_rotation_period,
         )
-        saturation = values * -1 + 1
+        saturation = values
         values_color = values
         hsvs = np.transpose(np.array((hue, saturation, values_color)))
         rgbs = matplotlib.colors.hsv_to_rgb(hsvs)

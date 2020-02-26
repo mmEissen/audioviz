@@ -39,7 +39,6 @@ class AudioInput(airpixel.client.LoopingThread):
         self._clear_buffer()
 
         self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
-        print(period_size)
         self._mic.setperiodsize(period_size)
         self._mic.setrate(sample_rate)
         self._mic.setformat(alsa.PCM_FORMAT_S32_LE)
