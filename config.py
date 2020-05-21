@@ -15,7 +15,7 @@ VOLUME_DEBUG = bool(os.environ.get("RING_VOLUME_DEBUG", 0))
 FADE_FALLOFF = float(os.environ.get("RING_FADE_FALLOFF", 256))
 COLOR_RATATION_PERIOD = float(os.environ.get("RING_COLOR_ROTATION_PERIOD", 180))
 
-FIRST_OCTAVE = int(os.environ.get("RING_FIRST_OCTAVE", 5))
-NUM_OCTAVES = int(os.environ.get("RING_NUM_OCTAVES", 8))
+FIRST_OCTAVE = int(os.environ.get("RING_FIRST_OCTAVE", 3))
+NUM_OCTAVES = int(os.environ.get("RING_NUM_OCTAVES", 12))
 
 WINDOW_SIZE_SEC = float(os.environ.get("RING_WINDOW_SIZE_SEC", 0.1))

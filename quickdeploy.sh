@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-# nmcli c down EasyBox-419245 && nmcli c up AIRPIXEL
+nmcli c down EasyBox-419245 && nmcli c up AIRPIXEL
 
 pushd "$(dirname $0)"
 rsync -aP --delete --exclude-from='../airpixel/.gitignore' --exclude='../airpixel/.git/*' ../airpixel/ 192.168.4.1:/home/moritz/audio/airpixel
@@ -10,4 +10,4 @@ popd
 
 ssh 192.168.4.1 "sudo systemctl restart audioviz" 
 
-# nmcli c down AIRPIXEL && nmcli c up EasyBox-419245
+nmcli c down AIRPIXEL && nmcli c up EasyBox-419245

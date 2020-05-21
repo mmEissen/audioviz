@@ -191,9 +191,19 @@ class MaxMatrixVertical(PlottableNode):
         self.emit(np.maximum.reduce(data))
 
 
-class NaturalLogarithm(PlottableNode):
+class Logarithm(PlottableNode):
+
+    def setup(self, summand=0, window=None):
+        super().setup(window=window)
+        self.summand = summand
+        self.at_0 = self._logarithm(0)
+        self.quotient = self._logarithm(1) - self.at_0
+
     def run(self, data):
-        self.emit(np.log(data + 1))
+        self.emit((self._logarithm(data) - self.at_0) / self.quotient)
+
+    def _logarithm(self, data):
+        return np.log(data + self.summand)
 
 
 class Normalizer(PlottableNode):
@@ -227,13 +237,13 @@ class Fade(PlottableNode):
         self.last_data = np.maximum(self.last_data, data)
         self.emit(self.last_data)
 
-class Clip(Node):
+class Shift(Node):
     def setup(self, minimum=0, maximum=1):
         self.minimum = minimum
-        self.maximum = maximum
+        self.factor = maximum - minimum
 
     def run(self, data):
-        self.emit(np.clip(data, self.minimum, self.maximum))
+        self.emit(data * self.factor + self.minimum)
 
 class Ring(Node):
     def setup(self, color_rotation_period, ip_address, port):
