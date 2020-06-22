@@ -38,8 +38,10 @@ class ContiniuousVolumeNormalizer:
             self._last_call = timestamp
         max_sample = np.max(np.abs(signal))
         self._update_threshold(max_sample, timestamp)
-        if self._current_threshold >= self._min_threshold and self._current_threshold != 0:
-            print(self._current_threshold)
+        if (
+            self._current_threshold >= self._min_threshold
+            and self._current_threshold != 0
+        ):
             return signal / self._current_threshold
         return np.zeros_like(signal)
 
@@ -192,7 +194,6 @@ class MaxMatrixVertical(PlottableNode):
 
 
 class Logarithm(PlottableNode):
-
     def setup(self, summand=0, window=None):
         super().setup(window=window)
         self.summand = summand
@@ -237,6 +238,7 @@ class Fade(PlottableNode):
         self.last_data = np.maximum(self.last_data, data)
         self.emit(self.last_data)
 
+
 class Shift(Node):
     def setup(self, minimum=0, maximum=1):
         self.minimum = minimum
@@ -244,6 +246,7 @@ class Shift(Node):
 
     def run(self, data):
         self.emit(data * self.factor + self.minimum)
+
 
 class Ring(Node):
     def setup(self, color_rotation_period, ip_address, port):
@@ -266,6 +269,30 @@ class Ring(Node):
         frame = [
             air_client.Pixel(r, g, b)
             for r, g, b in self._values_to_rgb(data, time.time())
+        ]
+        self.client.show_frame(frame)
+
+
+class Star(Node):
+    def setup(self, ip_address, port, led_per_beam=8, beams=36):
+        self.led_per_beam = led_per_beam
+        self.beams = beams
+        self.client = air_client.AutoClient()
+        self.client.begin(ip_address, int(port), air_client.ColorMethodGRB)
+
+    def create_beam(self, value, flip=False):
+        value *= self.led_per_beam
+        colour = np.array([1, 0, 0])
+        values = np.clip(np.arange(self.led_per_beam) - value, 0, 1)
+        if flip:
+            values = np.flip(values)
+        return np.reshape(np.kron(values, colour), (-1, 3))
+
+    def run(self, data):
+        frame = [
+            air_client.Pixel(r, g, b)
+            for beam_index, value in enumerate(data)
+            for r, g, b in self.create_beam(value, flip=(beam_index % 2 == 0))
         ]
         self.client.show_frame(frame)
 
