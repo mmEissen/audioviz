@@ -1,5 +1,7 @@
 import time
 import threading
+import math
+from functools import reduce
 
 import numpy as np
 import matplotlib
@@ -274,27 +276,128 @@ class Ring(Node):
 
 
 class Star(Node):
-    def setup(self, ip_address, port, led_per_beam=8, beams=36):
+    def setup(self, ip_address, port, led_per_beam, beams, octaves):
         self.led_per_beam = led_per_beam
         self.beams = beams
         self.client = air_client.AutoClient()
         self.client.begin(ip_address, int(port), air_client.ColorMethodGRB)
+        self._resolution = led_per_beam * 8
+        self._pre_computed_strips = self._pre_compute_strips(self._resolution)
+        self._octaves = octaves
+        self._colors = np.array(
+            [
+                np.array([1 - b, 0, b] * led_per_beam)
+                for b in np.linspace(0, 1, num=self._octaves * beams)
+            ]
+        ).reshape((self._octaves, beams * led_per_beam, 3))
 
-    def create_beam(self, value, flip=False):
-        value *= self.led_per_beam
-        colour = np.array([1, 0, 0])
-        values = np.clip(np.arange(self.led_per_beam) - value, 0, 1)
-        if flip:
-            values = np.flip(values)
-        return np.reshape(np.kron(values, colour), (-1, 3))
+        self._index_mask = np.zeros(beams, dtype="int")
+        self._index_mask[1::2] = self._resolution
+        self._index_mask = np.repeat(self._index_mask[None, :], self._octaves, axis=0)
+
+        self._blank_frame = np.zeros(beams * led_per_beam * 3).reshape(
+            (beams * led_per_beam, 3)
+        )
+
+    def _make_strip(self, value):
+        scaled_value = value * self.led_per_beam
+        return np.array(
+            [0.5 for _ in range(math.floor(scaled_value))]
+            + [0.5 * (scaled_value - math.floor(scaled_value))]
+            + [0 for _ in range(self.led_per_beam - math.floor(scaled_value) - 1)]
+        )
+
+    def _make_reverse_strip(self, value):
+        return np.flip(self._make_strip(value), axis=0)
+
+    def _pre_compute_strips(self, resolution):
+        strips = [self._make_strip(i / resolution) for i in range(resolution)]
+        reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
+        return np.array(strips + reverse)
+
+    def alpha_blend(self, background, foreground_and_alpha):
+        foreground, alpha = foreground_and_alpha
+        return foreground * alpha[..., None] + background * (1 - alpha[..., None])
+
+    def _values_to_rgb(self, values, timestamp):
+        indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self._resolution).astype(
+            "int"
+        ) + self._index_mask
+        alphas = self._pre_computed_strips[indexes].reshape(self._octaves, -1)
+        color_and_alpha = zip(self._colors, alphas)
+        final = reduce(self.alpha_blend, color_and_alpha, self._blank_frame)
+        return final
 
     def run(self, data):
         frame = [
             air_client.Pixel(r, g, b)
-            for beam_index, value in enumerate(data)
-            for r, g, b in self.create_beam(value, flip=(beam_index % 2 == 0))
+            for r, g, b in self._values_to_rgb(data, time.time())
         ]
         self.client.show_frame(frame)
+
+
+class Sun(Ring):
+    def setup(self, port, led_per_strip, num_strips, octaves):
+        self.client = air_client.AirClient(
+            port,
+            port + 1,
+            led_per_strip * num_strips,
+            color_method=air_client.ColorMethod.GRB,
+        )
+        self._led_per_strip = led_per_strip
+        self._resolution = led_per_strip * 8
+        self._pre_computed_strips = self._pre_compute_strips(self._resolution)
+
+        self._octaves = octaves
+        self._index_mask = np.zeros(num_strips, dtype="int")
+        self._index_mask[1::2] = self._resolution
+        self._index_mask = np.repeat(self._index_mask[None, :], self._octaves, axis=0)
+
+        self._colors = np.array(
+            [
+                np.array([1 - b, 0, b] * self._led_per_strip)
+                for b in np.linspace(0, 1, num=self._octaves * num_strips)
+            ]
+        ).reshape((self._octaves, num_strips * self._led_per_strip, 3))
+
+        self._blank_frame = np.zeros(num_strips * self._led_per_strip * 3).reshape(
+            (num_strips * self._led_per_strip, 3)
+        )
+
+    def _make_strip(self, value):
+        scaled_value = value * self._led_per_strip
+        return np.array(
+            [0.5 for _ in range(math.floor(scaled_value))]
+            + [0.5 * (scaled_value - math.floor(scaled_value))]
+            + [0 for _ in range(self._led_per_strip - math.floor(scaled_value) - 1)]
+        )
+
+    def _make_reverse_strip(self, value):
+        return np.flip(self._make_strip(value), axis=0)
+
+    def _pre_compute_strips(self, resolution):
+        strips = [self._make_strip(i / resolution) for i in range(resolution)]
+        reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
+        return np.array(strips + reverse)
+
+    def alpha_blend(self, background, foreground_and_alpha):
+        foreground, alpha = foreground_and_alpha
+        return foreground * alpha[..., None] + background * (1 - alpha[..., None])
+
+    def _values_to_rgb(self, values, timestamp):
+        indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self._resolution).astype(
+            "int"
+        ) + self._index_mask
+        alphas = self._pre_computed_strips[indexes].reshape(self._octaves, -1)
+        color_and_alpha = zip(self._colors, alphas)
+        final = reduce(self.alpha_blend, color_and_alpha, self._blank_frame)
+        return final
+
+    def run(self, data):
+        start_time = time.time()
+        super().run(data)
+        run_time = time.time() - start_time
+        time.sleep(max(0, (1 / 30) - run_time))
 
 
 class Void(Node):

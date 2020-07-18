@@ -30,12 +30,12 @@ VOLUME_MIN_THRESHOLD = 0
 VOLUME_FALLOFF = 1.1
 VOLUME_DEBUG = 0
 
-FADE_FALLOFF = 256
+FADE_FALLOFF = 5000
 
 FIRST_OCTAVE = 3
 NUM_OCTAVES = 12
 
-WINDOW_SIZE_SEC = 0.1
+WINDOW_SIZE_SEC = 0.04
 
 
 def main() -> None:
@@ -75,7 +75,7 @@ def main() -> None:
         )
         | nodes.Gaussian("smoothed", sigma=1.2, window=None)
         | nodes.FoldingNode("folded", num_octaves=NUM_OCTAVES, window=None)
-        | nodes.SumMatrixVertical("sum", window=None)
+        # | nodes.SumMatrixVertical("sum", window=None)
         # | nodes.MaxMatrixVertical("max", window=window)
         | nodes.Normalizer(
             "normalized",
@@ -85,13 +85,15 @@ def main() -> None:
         )
         | nodes.Square("square", window=None)
         | nodes.Logarithm("log", summand=0.3, window=None)
-        # | nodes.Fade("fade", falloff=FADE_FALLOFF, window=window)
-        | nodes.Shift("clip", minimum=0.14)
+        | nodes.Fade("fade", falloff=FADE_FALLOFF, window=window)
+        # | nodes.Shift("clip", minimum=0.14)
         | nodes.Star(
             "ring",
             ip_address=ip_address,
             port=port,
-            led_per_beam=LED_PER_BEAM, beams=BEAMS,
+            led_per_beam=LED_PER_BEAM,
+            beams=BEAMS,
+            octaves=NUM_OCTAVES,
         )
     )
 
