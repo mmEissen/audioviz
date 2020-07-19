@@ -10,17 +10,13 @@ import threading
 from airpixel import client as air_client
 from pyPiper import Pipeline
 
-if config.VISUALIZE:
-    import pyqtgraph as graph
-    from pyqtgraph.Qt import QtGui, QtCore
-
 import nodes
 
 
 BEAMS = 36
 LED_PER_BEAM = 8
 
-VISUALIZE = False
+VISUALIZE = bool(os.environ.get("VISUALIZE", False))
 
 SAMPLE_RATE = 176400
 
@@ -30,7 +26,7 @@ VOLUME_MIN_THRESHOLD = 0
 VOLUME_FALLOFF = 1.1
 VOLUME_DEBUG = 0
 
-FADE_FALLOFF = 5000
+FADE_FALLOFF = 20
 
 FIRST_OCTAVE = 3
 NUM_OCTAVES = 12
@@ -42,6 +38,8 @@ def main() -> None:
     ip_address, port = sys.argv[1:3]
 
     if VISUALIZE:
+        import pyqtgraph as graph
+        from pyqtgraph.Qt import QtGui, QtCore
         app = QtGui.QApplication([])
         window = graph.GraphicsWindow(title="Audio")
         window.resize(1800, 600)
@@ -59,7 +57,7 @@ def main() -> None:
 
     pipeline = Pipeline(
         nodes.AudioGenerator(
-            "mic", audio_input=audio_input, samples=samples, window=window
+            "mic", audio_input=audio_input, samples=samples, window=None
         )
         | fft_node
         | nodes.AWeighting(
@@ -81,11 +79,11 @@ def main() -> None:
             "normalized",
             min_threshold=VOLUME_MIN_THRESHOLD,
             falloff=VOLUME_FALLOFF,
-            window=window,
+            window=None,
         )
         | nodes.Square("square", window=None)
-        | nodes.Logarithm("log", summand=0.3, window=None)
-        | nodes.Fade("fade", falloff=FADE_FALLOFF, window=window)
+        # | nodes.Logarithm("log", summand=0.3, window=None)
+        # | nodes.Fade("fade", falloff=FADE_FALLOFF, window=window)
         # | nodes.Shift("clip", minimum=0.14)
         | nodes.Star(
             "ring",

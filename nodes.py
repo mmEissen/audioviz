@@ -284,9 +284,15 @@ class Star(Node):
         self._resolution = led_per_beam * 8
         self._pre_computed_strips = self._pre_compute_strips(self._resolution)
         self._octaves = octaves
+        # self._colors = np.array(
+        #     [
+        #         np.array([1 - b, 0, b] * led_per_beam)
+        #         for b in np.linspace(0, 1, num=self._octaves * beams)
+        #     ]
+        # ).reshape((self._octaves, beams * led_per_beam, 3))
         self._colors = np.array(
             [
-                np.array([1 - b, 0, b] * led_per_beam)
+                np.array([1, 0, 0] * led_per_beam)
                 for b in np.linspace(0, 1, num=self._octaves * beams)
             ]
         ).reshape((self._octaves, beams * led_per_beam, 3))
@@ -302,8 +308,8 @@ class Star(Node):
     def _make_strip(self, value):
         scaled_value = value * self.led_per_beam
         return np.array(
-            [0.5 for _ in range(math.floor(scaled_value))]
-            + [0.5 * (scaled_value - math.floor(scaled_value))]
+            [0.3 for i in range(math.floor(scaled_value))]
+            + [0.3 * (scaled_value - math.floor(scaled_value))]
             + [0 for _ in range(self.led_per_beam - math.floor(scaled_value) - 1)]
         )
 

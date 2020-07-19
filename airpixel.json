@@ -4,6 +4,6 @@
     "udp_port": 50000,
     "devices": {
         "ring": "python run.py {ip_address} {port}",
-        "dev-test": "python run_star.py {ip_address} {port}"
+        "ethereality": "python run_star.py {ip_address} {port}"
     }
 }
