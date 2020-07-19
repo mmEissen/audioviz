@@ -290,16 +290,10 @@ class Star(Node):
         #         for b in np.linspace(0, 1, num=self._octaves * beams)
         #     ]
         # ).reshape((self._octaves, beams * led_per_beam, 3))
-        self._colors = np.array(
-            [
-                np.array([1, 0, 0] * led_per_beam)
-                for b in np.linspace(0, 1, num=self._octaves * beams)
-            ]
-        ).reshape((self._octaves, beams * led_per_beam, 3))
+        self._colors = np.transpose(np.array([np.array([1, 0, 0])] * led_per_beam * beams))
 
         self._index_mask = np.zeros(beams, dtype="int")
         self._index_mask[1::2] = self._resolution
-        self._index_mask = np.repeat(self._index_mask[None, :], self._octaves, axis=0)
 
         self._blank_frame = np.zeros(beams * led_per_beam * 3).reshape(
             (beams * led_per_beam, 3)
@@ -321,18 +315,12 @@ class Star(Node):
         reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
         return np.array(strips + reverse)
 
-    def alpha_blend(self, background, foreground_and_alpha):
-        foreground, alpha = foreground_and_alpha
-        return foreground * alpha[..., None] + background * (1 - alpha[..., None])
-
     def _values_to_rgb(self, values, timestamp):
         indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self._resolution).astype(
             "int"
         ) + self._index_mask
-        alphas = self._pre_computed_strips[indexes].reshape(self._octaves, -1)
-        color_and_alpha = zip(self._colors, alphas)
-        final = reduce(self.alpha_blend, color_and_alpha, self._blank_frame)
-        return final
+        alphas = self._pre_computed_strips[indexes].reshape(-1)
+        return np.transpose(alphas * self._colors)
 
     def run(self, data):
         frame = [

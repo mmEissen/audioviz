@@ -74,7 +74,7 @@ def main() -> None:
         | nodes.Gaussian("smoothed", sigma=1.2, window=None)
         | nodes.FoldingNode("folded", num_octaves=NUM_OCTAVES, window=None)
         # | nodes.SumMatrixVertical("sum", window=None)
-        # | nodes.MaxMatrixVertical("max", window=window)
+        | nodes.MaxMatrixVertical("max", window=None)
         | nodes.Normalizer(
             "normalized",
             min_threshold=VOLUME_MIN_THRESHOLD,
