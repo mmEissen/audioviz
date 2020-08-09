@@ -281,7 +281,7 @@ class Star(Node):
         self.beams = beams
         self.client = air_client.AutoClient()
         self.client.begin(ip_address, int(port), air_client.ColorMethodGRB)
-        self._resolution = led_per_beam * 8
+        self._resolution = led_per_beam * 16
         self._pre_computed_strips = self._pre_compute_strips(self._resolution)
         self._octaves = octaves
         # self._colors = np.array(
