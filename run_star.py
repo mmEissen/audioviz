@@ -26,9 +26,9 @@ VOLUME_MIN_THRESHOLD = 0
 VOLUME_FALLOFF = 1.1
 VOLUME_DEBUG = 0
 
-FADE_FALLOFF = 5000
+FADE_FALLOFF = 32
 
-FIRST_OCTAVE = 4
+FIRST_OCTAVE = 5
 NUM_OCTAVES = 8
 
 WINDOW_SIZE_SEC = 0.1
@@ -37,53 +37,45 @@ WINDOW_SIZE_SEC = 0.1
 def main() -> None:
     ip_address, port = sys.argv[1:3]
 
-    if VISUALIZE:
-        import pyqtgraph as graph
-        from pyqtgraph.Qt import QtGui, QtCore
-        app = QtGui.QApplication([])
-        window = graph.GraphicsWindow(title="Audio")
-        window.resize(1800, 600)
-        window.setWindowTitle("Audio")
-    else:
-        window = None
+    mon_client = air_client.MonitorClient("monitoring_uds")
 
     audio_input = audio_tools.AudioInput(sample_rate=SAMPLE_RATE)
     audio_input.start()
 
     samples = audio_input.seconds_to_samples(WINDOW_SIZE_SEC)
     fft_node = nodes.FastFourierTransform(
-        "fft", samples=samples, sample_delta=audio_input.sample_delta, window=None
+        "fft", samples=samples, sample_delta=audio_input.sample_delta, monitor_client=mon_client
     )
 
     pipeline = Pipeline(
         nodes.AudioGenerator(
-            "mic", audio_input=audio_input, samples=samples, window=None
+            "mic", audio_input=audio_input, samples=samples, monitor_client=mon_client
         )
         | fft_node
         | nodes.AWeighting(
-            "a-weighting", frequencies=fft_node.fourier_frequencies, window=None
+            "a-weighting", frequencies=fft_node.fourier_frequencies, monitor_client=mon_client
         )
         | nodes.OctaveSubsampler(
             "sampled",
             start_octave=FIRST_OCTAVE,
-            samples_per_octave=BEAMS,
+            samples_per_octave=BEAMS / NUM_OCTAVES,
             num_octaves=NUM_OCTAVES,
             frequencies=fft_node.fourier_frequencies,
-            window=None,
+            monitor_client=mon_client,
         )
-        | nodes.Gaussian("smoothed", sigma=1.2, window=None)
-        | nodes.FoldingNode("folded", num_octaves=NUM_OCTAVES, window=None)
-        # | nodes.SumMatrixVertical("sum", window=None)
-        | nodes.MaxMatrixVertical("max", window=None)
+        | nodes.Gaussian("smoothed", sigma=0.5, monitor_client=mon_client)
+        # | nodes.FoldingNode("folded", samples_per_octave=BEAMS, monitor_client=mon_client)
+        # | nodes.SumMatrixVertical("sum", monitor_client=mon_client)
+        # | nodes.MaxMatrixVertical("max", monitor_client=mon_client)
         | nodes.Normalizer(
             "normalized",
             min_threshold=VOLUME_MIN_THRESHOLD,
             falloff=VOLUME_FALLOFF,
-            window=None,
+            monitor_client=mon_client,
         )
-        | nodes.Square("square", window=None)
-        # | nodes.Logarithm("log", summand=0.3, window=None)
-        # | nodes.Fade("fade", falloff=FADE_FALLOFF, window=window)
+        | nodes.Square("square", monitor_client=mon_client)
+        | nodes.Logarithm("log", i_0=0.03, monitor_client=mon_client)
+        # | nodes.Fade("fade", falloff=FADE_FALLOFF, monitor_client=mon_client)
         # | nodes.Shift("clip", minimum=0.14)
         | nodes.Star(
             "ring",

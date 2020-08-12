@@ -18,7 +18,32 @@ class AudioError(Exception):
     pass
 
 
-class AudioInput(airpixel.client.LoopingThread):
+class LoopingThread(threading.Thread, abc.ABC):
+    def __init__(self, *args: t.Any, **kwargs: t.Any):
+        super().__init__(*args, daemon=True, **kwargs)
+        self._is_running = False
+
+    @abc.abstractmethod
+    def loop(self) -> None:
+        pass
+
+    def setup(self) -> None:
+        self._is_running = True
+
+    def tear_down(self) -> None:
+        pass
+
+    def run(self) -> None:
+        self.setup()
+        while self._is_running:
+            self.loop()
+        self.tear_down()
+
+    def stop(self) -> None:
+        self._is_running = False
+
+
+class AudioInput(LoopingThread):
     number_channels = 1
 
     def __init__(
