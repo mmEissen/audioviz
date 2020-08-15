@@ -1,16 +1,13 @@
-import config
-
 import typing as t
 import time
 import sys
 import os
 
-import audio_tools
 import threading
 from airpixel import client as air_client
 from pyPiper import Pipeline
 
-import nodes
+from audioviz import audio_tools, nodes
 
 
 BEAMS = 36
@@ -87,12 +84,7 @@ def main() -> None:
         )
     )
 
-    if config.VISUALIZE:
-        audio_pipeline = threading.Thread(target=pipeline.run, daemon=True)
-        audio_pipeline.start()
-        app.exec_()
-    else:
-        pipeline.run()
+    pipeline.run()
 
 
 if __name__ == "__main__":

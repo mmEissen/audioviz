@@ -16,8 +16,7 @@ from numpy.fft import rfft as fourier_transform, rfftfreq
 from pyPiper import Node, Pipeline
 from scipy import ndimage
 
-import a_weighting_table
-import audio_tools
+from audioviz import a_weighting_table, audio_tools
 
 
 class ContiniuousVolumeNormalizer:

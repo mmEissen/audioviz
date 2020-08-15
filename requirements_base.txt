@@ -1,5 +1,0 @@
-numpy
-pyalsaaudio
-scipy
-matplotlib
-pypiper

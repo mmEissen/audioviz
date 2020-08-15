@@ -3,10 +3,8 @@ framework:
     port: 50000
     udp_port: 50000
     devices:
-        - device_id: "ring"
-          command_template: "python run.py {ip_address} {port}"
         - device_id: "ethereality"
-          command_template: "python run_star.py {ip_address} {port}"
+          command_template: "python -m audioviz.star {ip_address} {port}"
 
 monitoring:
   address: "0.0.0.0"
