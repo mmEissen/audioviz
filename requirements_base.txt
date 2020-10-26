@@ -1,6 +1,0 @@
-numpy
-pyalsaaudio
-scipy
-matplotlib
-pypiper
--e ../airpixel

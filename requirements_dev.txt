@@ -1,6 +1,0 @@
--r requirements_base.txt
-pytest
-pylint
-mypy
-pyqt5
-pyqtgraph
