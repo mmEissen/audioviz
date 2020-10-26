@@ -4,3 +4,4 @@ ring_client/tests/audio_samples/
 .mypy_cache
 .venv
 dist
+*.egg-info/**
