@@ -3,8 +3,8 @@ Description=Audioviz
 After=network.target audio.target
 
 [Service]
-ExecStart=/home/moritz/audioviz/audioviz/run.sh
-WorkingDirectory=/home/moritz/audioviz/audioviz/
+ExecStart=/home/moritz/audioviz/run.sh
+WorkingDirectory=/home/moritz/audioviz/
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
