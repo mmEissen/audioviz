@@ -12,6 +12,7 @@ poetry install --no-dev
 
 sudo cp -f ./audioviz.service /etc/systemd/system/audioviz.service
 
+sudo systemctl daemon-reload
 sudo systemctl enable audioviz
 sudo systemctl restart audioviz
 

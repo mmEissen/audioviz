@@ -2,7 +2,7 @@ monitor:
     server: "ubuntu"
     port: 50001
     streams:
-        # - name: mic
+        - name: mic
         # - name: fft
         # - name: a-weighting
         # - name: sampled
