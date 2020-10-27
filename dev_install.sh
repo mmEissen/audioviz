@@ -4,6 +4,7 @@ set -e
 
 pushd "$(dirname "$0")"
 
+git fetch
 git checkout $1
 git clean -df
 
