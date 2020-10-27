@@ -8,7 +8,7 @@ WorkingDirectory=/home/moritz/audioviz/audioviz/
 StandardOutput=inherit
 StandardError=inherit
 Restart=always
-User=moritz
+User=root
 
 [Install]
 WantedBy=multi-user.target
