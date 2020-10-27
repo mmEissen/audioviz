@@ -9,9 +9,9 @@ git clean -df
 
 poetry install --no-dev
 
-cp -f ./audioviz.service /etc/systemd/system/audioviz.service
+sudo cp -f ./audioviz.service /etc/systemd/system/audioviz.service
 
-systemctl enable audioviz
-systemctl restart audioviz
+sudo systemctl enable audioviz
+sudo systemctl restart audioviz
 
 popd
