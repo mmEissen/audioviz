@@ -71,6 +71,15 @@ class AudioGenerator(PlottableNode):
         self.emit(samples)
 
 
+class Hamming(PlottableNode):
+    def setup(self, samples, monitor_client=None):
+        super().setup(monitor_client)
+        self._window = np.hamming(samples)
+
+    def run(self, data):
+        self.emit(np.multiply(data, self._window))
+
+
 class FastFourierTransform(PlottableNode):
     def setup(self, samples, sample_delta, monitor_client=None):
         super().setup(monitor_client)
@@ -92,6 +101,23 @@ class OctaveSubsampler(PlottableNode):
                 + samples_per_octave * start_octave
             )
             / samples_per_octave
+        )
+        self.frequencies = frequencies
+
+    def run(self, data):
+        self.emit(
+            np.interp(self._sample_points, self.frequencies, data, left=0, right=0)
+        )
+
+class ExponentialSubsampler(PlottableNode):
+    def setup(
+        self, start_frequency, stop_frequency, samples, frequencies, monitor_client=None
+    ):
+        super().setup(monitor_client)
+        start_note = np.log2(start_frequency)
+        stop_note = np.log2(stop_frequency)
+        self._sample_points = np.exp2(
+            np.linspace(start_note, stop_note, samples)
         )
         self.frequencies = frequencies
 
@@ -143,6 +169,27 @@ class SumMatrixVertical(PlottableNode):
 class MaxMatrixVertical(PlottableNode):
     def run(self, data):
         self.emit(np.maximum.reduce(data))
+
+
+class Mirror(PlottableNode):
+    def setup(self, reverse=False, monitor_client=None):
+        super().setup(monitor_client=monitor_client)
+        self.reverse = reverse
+
+    def run(self, data):
+        if self.reverse:
+            self.emit(np.concatenate([data, np.flip(data)]))
+        else:
+            self.emit(np.concatenate([np.flip(data), data]))
+
+
+class Roll(PlottableNode):
+    def setup(self, shift, monitor_client=None):
+        super().setup(monitor_client=monitor_client)
+        self._shift = shift
+
+    def run(self, data):
+        self.emit(np.roll(data, self._shift))
 
 
 class Logarithm(PlottableNode):
@@ -210,7 +257,7 @@ class Star(Node):
         #         for b in np.linspace(0, 1, num=self._octaves * beams)
         #     ]
         # ).reshape((self._octaves, beams * led_per_beam, 3))
-        self._colors = np.transpose(np.array([np.array([1, 0, 0])] * led_per_beam * beams))
+        self._colors = np.transpose(np.array([np.array([0, 1, 1])] * led_per_beam * beams))
 
         self._index_mask = np.zeros(beams, dtype="int")
         self._index_mask[1::2] = self._resolution
