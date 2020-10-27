@@ -71,7 +71,7 @@ def main() -> None:
             monitor_client=mon_client,
         )
         | nodes.Square("square", monitor_client=mon_client)
-        | nodes.Logarithm("log", i_0=0.03, monitor_client=mon_client)
+        # | nodes.Logarithm("log", i_0=0.03, monitor_client=mon_client)
         # | nodes.Fade("fade", falloff=FADE_FALLOFF, monitor_client=mon_client)
         # | nodes.Shift("clip", minimum=0.14)
         | nodes.Star(

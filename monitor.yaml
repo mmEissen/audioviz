@@ -1,5 +1,5 @@
 monitor:
-    server: "192.168.2.125"
+    server: "ubuntu"
     port: 50001
     streams:
         # - name: mic
@@ -9,6 +9,6 @@ monitor:
         # - name: smoothed
         # - name: folded
         # - name: max
-        - name: normalized
+        # - name: normalized
         - name: square
-        - name: log
+        # - name: log
