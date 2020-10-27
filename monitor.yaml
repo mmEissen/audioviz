@@ -1,5 +1,5 @@
 monitor:
-    server: "0.0.0.0"
+    server: "192.168.2.125"
     port: 50001
     streams:
         # - name: mic

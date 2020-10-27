@@ -11,7 +11,6 @@ monitoring:
   port: 50001
   unix_socket: ./monitoring_uds
 
-
 logging:
   version: 1
   disable_existing_loggers: False
