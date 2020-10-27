@@ -4,10 +4,6 @@ import math
 from functools import reduce
 
 import numpy as np
-import matplotlib
-
-matplotlib.use("agg")
-
 
 import io
 from airpixel import client as air_client
