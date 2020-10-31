@@ -15,6 +15,8 @@ _T = t.TypeVar("_T")
 
 
 class Computation(abc.ABC, t.Generic[_T]):
+    __hash__ = None
+    
     def __post_init__(self):
         self._set_is_reset(True)
 
