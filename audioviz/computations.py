@@ -59,7 +59,7 @@ class Computation(abc.ABC, t.Generic[_T]):
     def clean(self) -> None:
         if self.is_constant():
             return
-        for input_ in self._inputs():
+        for input_ in self.inputs():
             input_.clean()
         self._is_clean = True
 
@@ -69,29 +69,37 @@ class Computation(abc.ABC, t.Generic[_T]):
         if self.computation_type == ComputationType.DYNAMIC:
             return False
         if self.computation_type == ComputationType.INHERIT:
-            return all(input_.is_constant() for input_ in self._inputs())
+            return all(input_.is_constant() for input_ in self.inputs())
         raise InvalidComputationTypeError("Unknown computation type.")
 
-    def _inputs(self) -> t.Iterable[Computation]:
+    def inputs(self) -> t.Iterable[Computation]:
         return (
             getattr(self, field.name)
             for field in dataclasses.fields(self)
             if isinstance(getattr(self, field.name), Computation)
         )
 
-    def __setattr__(self, name: str, value: t.Any) -> None:
-        super().__setattr__(name, value)
-        if isinstance(value, Computation):
-            self._check_cycle()
-
-    def _check_cycle(self, seen_ids=None):
+    def _check_cycle(self, seen_ids=None) -> None:
         if not hasattr(self, "_cycle_check"):
             return
         seen_ids = seen_ids or set()
         if id(self) in seen_ids:
             raise ComputationCycleError("Detected cycle in computations!")
-        for input_ in self._inputs():
+        for input_ in self.inputs():
             input_._check_cycle(seen_ids=seen_ids | {id(self)})
+
+    def __setattr__(self, name: str, value: t.Any) -> None:
+        super().__setattr__(name, value)
+        if isinstance(value, Computation):
+            self._check_cycle()
+    
+    def __str__(self) -> str:
+        attributes = [
+            f"{field.name}={getattr(self, field.name)}"
+            for field in dataclasses.fields(self)
+            if not isinstance(getattr(self, field.name), Computation)
+        ]
+        return f"{self.__class__.__qualname__}({', '.join(attributes)})"
 
 
 @computation()

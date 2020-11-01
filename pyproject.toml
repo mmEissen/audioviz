@@ -20,6 +20,7 @@ readable_log_formatter = "^0.1.4"
 [tool.poetry.dev-dependencies]
 tox = "^3.15.0"
 airpixel = {extras = ["monitoring"], version = "^0.9"}
+graphviz = "^0.14.2"
 
 [tool.poetry.extras]
 test = ["pytest"]
