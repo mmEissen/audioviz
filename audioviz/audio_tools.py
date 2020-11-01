@@ -1,14 +1,11 @@
 import abc
-import math
 import struct
 import threading
-import time
 from collections import deque
 import typing as t
-import airpixel.client
 
 import alsaaudio as alsa
-import numpy
+import numpy as np
 
 MS_IN_SECOND = 1000
 SECONDS_IN_MINUTE = 60
@@ -49,7 +46,7 @@ class AudioInput(LoopingThread):
     def __init__(
         self,
         device = "default",
-        cardindex=1,
+        cardindex=0,
         sample_rate = 22050,
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
@@ -104,3 +101,34 @@ class AudioInput(LoopingThread):
     
     def seconds_to_samples(self, seconds):
         return int(seconds * self.sample_rate)
+
+
+class ContiniuousVolumeNormalizer:
+    def __init__(self, min_threshold=0, falloff=1.1) -> None:
+        self._min_threshold = min_threshold
+        self._falloff = falloff
+        self._current_threshold = self._min_threshold
+        self._last_call = 0
+
+    def _update_threshold(self, max_sample, timestamp):
+        if max_sample >= self._current_threshold:
+            self._current_threshold = max_sample
+        else:
+            target_threshold = max_sample
+            factor = 1 / self._falloff ** (timestamp - self._last_call)
+            self._current_threshold = (
+                self._current_threshold * factor + target_threshold * (1 - factor)
+            )
+        self._last_call = timestamp
+
+    def normalize(self, signal, timestamp):
+        if self._last_call == 0:
+            self._last_call = timestamp
+        max_sample = np.max(np.abs(signal))
+        self._update_threshold(max_sample, timestamp)
+        if (
+            self._current_threshold >= self._min_threshold
+            and self._current_threshold != 0
+        ):
+            return signal / self._current_threshold
+        return np.zeros_like(signal)

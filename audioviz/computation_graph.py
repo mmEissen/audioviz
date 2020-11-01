@@ -34,37 +34,4 @@ def make_graph(computation: computations.Computation) -> None:
             todo.append(child)
             digraph.edge(name(child), name(node))
 
-    print(digraph.source)
-
-
-if __name__ == "__main__":
-    resample_notes = computations.Constant(
-        None
-    )  # np.linspace(lowest note, highest note number of beams / 2)
-    sample_count = computations.Constant(200)
-    sample_delta = computations.Constant(0.02)
-    fft_frequencies = computations.FastFourierTransformFrequencies(
-        sample_count, sample_delta
-    )
-
-    comp = computations.Roll(
-        computations.Mirror(
-            computations.Resample(
-                computations.Log2(fft_frequencies),
-                computations.Multiply(
-                    computations.AWeightingVector(fft_frequencies),
-                    computations.FastFourierTransform(
-                        computations.Multiply(
-                            computations.HammingWindow(sample_count),
-                            computations.AudioSource(None, sample_count),
-                        ),
-                        sample_delta,
-                    ),
-                ),
-                resample_notes,
-            ),
-            computations.Constant(True),
-        ),
-        computations.Constant(16),
-    )
-    make_graph(comp)
+    return digraph.source

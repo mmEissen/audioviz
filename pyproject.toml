@@ -16,6 +16,7 @@ scipy = "1.5.2"
 pypiper = "^0.5.3"
 airpixel = "^0.9"
 readable_log_formatter = "^0.1.4"
+click = "^7.1.2"
 
 [tool.poetry.dev-dependencies]
 tox = "^3.15.0"

@@ -1,13 +1,11 @@
 import typing as t
-import time
 import sys
 import os
 
-import threading
 from airpixel import client as air_client
-from pyPiper import Pipeline
+import click
 
-from audioviz import audio_tools, nodes
+from audioviz import audio_tools, computations
 
 
 BEAMS = 36
@@ -31,64 +29,73 @@ NUM_OCTAVES = 6
 WINDOW_SIZE_SEC = 0.05
 
 
-def main() -> None:
-    ip_address, port = sys.argv[1:3]
-
+def make_computation(ip_address: str, port: int):
     mon_client = air_client.MonitorClient("monitoring_uds")
 
     audio_input = audio_tools.AudioInput(sample_rate=SAMPLE_RATE)
     audio_input.start()
 
-    samples = audio_input.seconds_to_samples(WINDOW_SIZE_SEC)
-    fft_node = nodes.FastFourierTransform(
-        "fft", samples=samples, sample_delta=audio_input.sample_delta, monitor_client=mon_client
+    sample_count = computations.Constant(
+        audio_input.seconds_to_samples(WINDOW_SIZE_SEC)
+    )
+    sample_delta = computations.Constant(audio_input.sample_delta)
+    lowest_note = computations.Constant(6.02236781303)
+    highest_note = computations.Constant(11.0313565963)
+    beam_count = computations.Constant(36)
+    half_beam_count = computations.Constant(18)
+    leds_per_beam = computations.Constant(8)
+
+    fft_frequencies = computations.FastFourierTransformFrequencies(
+        sample_count, sample_delta
     )
 
-    pipeline = Pipeline(
-        nodes.AudioGenerator(
-            "mic", audio_input=audio_input, samples=samples, monitor_client=mon_client
-        )
-        | nodes.Hamming("hamming", samples=samples, monitor_client=mon_client)
-        | fft_node
-        | nodes.AWeighting(
-            "a-weighting", frequencies=fft_node.fourier_frequencies, monitor_client=mon_client
-        )
-        # | nodes.OctaveSubsampler(
-        #     "sampled",
-        #     start_octave=FIRST_OCTAVE,
-        #     samples_per_octave=BEAMS / NUM_OCTAVES,
-        #     num_octaves=NUM_OCTAVES,
-        #     frequencies=fft_node.fourier_frequencies,
-        #     monitor_client=mon_client,
-        # )
-        | nodes.ExponentialSubsampler("sampled", start_frequency=65, stop_frequency=1046, samples=18, frequencies=fft_node.fourier_frequencies, monitor_client=mon_client)
-        # | nodes.Gaussian("smoothed", sigma=0.5, monitor_client=mon_client)
-        # | nodes.FoldingNode("folded", samples_per_octave=BEAMS, monitor_client=mon_client)
-        # | nodes.SumMatrixVertical("sum", monitor_client=mon_client)
-        # | nodes.MaxMatrixVertical("max", monitor_client=mon_client)
-        | nodes.Normalizer(
-            "normalized",
-            min_threshold=VOLUME_MIN_THRESHOLD,
-            falloff=VOLUME_FALLOFF,
-            monitor_client=mon_client,
-        )
-        | nodes.Square("square", monitor_client=mon_client)
-        # | nodes.Logarithm("log", i_0=0.03, monitor_client=mon_client)
-        # | nodes.Fade("fade", falloff=FADE_FALLOFF, monitor_client=mon_client)
-        # | nodes.Shift("clip", minimum=0.14)
-        | nodes.Mirror("mirrored", reverse=False, monitor_client=mon_client)
-        | nodes.Roll("rolled", shift=16, monitor_client=mon_client)
-        | nodes.Star(
-            "ring",
-            ip_address=ip_address,
-            port=port,
-            led_per_beam=LED_PER_BEAM,
-            beams=BEAMS,
-            octaves=NUM_OCTAVES,
-        )
+    return computations.Star(
+        computations.Roll(
+            computations.Mirror(
+                computations.VolumeNormalizer(
+                    computations.Resample(
+                        computations.Log2(fft_frequencies),
+                        computations.Multiply(
+                            computations.AWeightingVector(fft_frequencies),
+                            computations.FastFourierTransform(
+                                computations.Multiply(
+                                    computations.AudioSource(audio_input, sample_count),
+                                    computations.HammingWindow(sample_count),
+                                ),
+                                sample_delta,
+                            ),
+                        ),
+                        computations.Linspace(
+                            lowest_note, highest_note, half_beam_count
+                        ),
+                    ),
+                    computations.Constant(True),
+                )
+            ),
+            computations.Constant(16),
+        ),
+        leds_per_beam,
+        beam_count,
+        ip_address,
+        port,
     )
 
-    pipeline.run()
+
+@click.command()
+@click.argument("ip_address", required=True)
+@click.argument("port", required=True, type=int)
+@click.option("--graph", is_flag=True)
+def main(ip_address:str, port: int, graph: bool) -> None:
+    comp = make_computation(ip_address, port)
+
+    if graph:
+        from audioviz import computation_graph
+        print(computation_graph.make_graph(comp))
+        return
+
+    while True:
+        comp.value()
+        comp.clean()
 
 
 if __name__ == "__main__":
