@@ -35,6 +35,32 @@ class ComputationType(enum.Enum):
     INHERIT = enum.auto()
 
 
+class NoBenchmarker:
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+
+@dataclasses.dataclass
+class Benchmarker(NoBenchmarker):
+    measurements: t.List[float] = dataclasses.field(default_factory=list)
+    start_time: int = 0
+
+    def average(self):
+        if not self.measurements:
+            return float("+inf")
+        return sum(self.measurements) / len(self.measurements)
+    
+    def start(self):
+        self.start_time = time.time()
+
+    def stop(self):
+        delta = time.time() - self.start_time
+        self.measurements.append(delta)
+
+
 class Computation(abc.ABC, t.Generic[_T]):
     computation_type: t.ClassVar[ComputationType] = ComputationType.INHERIT
 
@@ -42,6 +68,7 @@ class Computation(abc.ABC, t.Generic[_T]):
 
     def __post_init__(self):
         self._is_clean = True
+        self.benchmark = NoBenchmarker()
         self._cycle_check = True
 
     @abc.abstractmethod
@@ -49,9 +76,11 @@ class Computation(abc.ABC, t.Generic[_T]):
         raise NotImplementedError
 
     def value(self) -> _T:
+        self.benchmark.start()
         if self._is_clean:
             self._value = self._compute()
             self._is_clean = False
+        self.benchmark.stop()
         return self._value
 
     def clean(self) -> None:
@@ -76,6 +105,14 @@ class Computation(abc.ABC, t.Generic[_T]):
             for field in dataclasses.fields(self)
             if isinstance(getattr(self, field.name), Computation)
         )
+    
+    def set_benchmark(self, value: bool) -> None:
+        for input_ in self.inputs():
+            input_.set_benchmark(value)
+        if value:
+            self.benchmark = Benchmarker()
+        else:
+            self.benchmark = NoBenchmarker()
 
     def _check_cycle(self, seen_ids=None) -> None:
         if not hasattr(self, "_cycle_check"):
@@ -237,7 +274,7 @@ class Mirror(Computation[OneDArray]):
     )
 
     def _compute(self) -> OneDArray:
-        if self.right_side:
+        if self.right_side.value():
             return np.concatenate([self.input_.value(), np.flip(self.input_.value())])
         else:
             return np.concatenate([np.flip(self.input_.value()), self.input_.value()])

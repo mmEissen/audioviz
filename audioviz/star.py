@@ -1,3 +1,4 @@
+from audioviz.computations import Benchmarker
 import typing as t
 import sys
 import os
@@ -69,7 +70,6 @@ def make_computation(ip_address: str, port: int):
                             lowest_note, highest_note, half_beam_count
                         ),
                     ),
-                    computations.Constant(True),
                 )
             ),
             computations.Constant(16),
@@ -85,12 +85,13 @@ def make_computation(ip_address: str, port: int):
 @click.argument("ip_address", required=True)
 @click.argument("port", required=True, type=int)
 @click.option("--graph", is_flag=True)
-def main(ip_address:str, port: int, graph: bool) -> None:
+@click.option("--benchmark", is_flag=True)
+def main(ip_address:str, port: int, graph: bool, benchmark: bool) -> None:
     comp = make_computation(ip_address, port)
 
-    if graph:
+    if graph or benchmark:
         from audioviz import computation_graph
-        print(computation_graph.make_graph(comp))
+        print(computation_graph.make_graph(comp, benchmark))
         return
 
     while True:
