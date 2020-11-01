@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import abc
+import pdb
+from audioviz.nodes import AWeighting
 import dataclasses
+import enum
 import typing as t
 from _pytest.python_api import ApproxMapping
 
 import numpy as np
 from airpixel import client
 from numpy import fft
+from numpy.core.defchararray import multiply
 
 from audioviz import audio_tools, a_weighting_table
 
@@ -23,11 +27,23 @@ class ComputationCycleError(Exception):
     pass
 
 
+class InvalidComputationTypeError(Exception):
+    pass
+
+
+class ComputationType(enum.Enum):
+    DYNAMIC = enum.auto()
+    CONSTANT = enum.auto()
+    INHERIT = enum.auto()
+
+
 class Computation(abc.ABC, t.Generic[_T]):
+    computation_type: t.ClassVar[ComputationType] = ComputationType.INHERIT
+
     __hash__ = None
 
     def __post_init__(self):
-        self._is_reset = True
+        self._is_clean = True
         self._cycle_check = True
 
     @abc.abstractmethod
@@ -35,15 +51,26 @@ class Computation(abc.ABC, t.Generic[_T]):
         raise NotImplementedError
 
     def value(self) -> _T:
-        if self._is_reset:
+        if self._is_clean:
             self._value = self._compute()
-            self._is_reset = False
+            self._is_clean = False
         return self._value
 
-    def reset(self) -> None:
-        self._is_reset = True
+    def clean(self) -> None:
+        if self.is_constant():
+            return
         for input_ in self._inputs():
-            input_.reset()
+            input_.clean()
+        self._is_clean = True
+
+    def is_constant(self) -> bool:
+        if self.computation_type == ComputationType.CONSTANT:
+            return True
+        if self.computation_type == ComputationType.DYNAMIC:
+            return False
+        if self.computation_type == ComputationType.INHERIT:
+            return all(input_.is_constant() for input_ in self._inputs())
+        raise InvalidComputationTypeError("Unknown computation type.")
 
     def _inputs(self) -> t.Iterable[Computation]:
         return (
@@ -70,6 +97,8 @@ class Computation(abc.ABC, t.Generic[_T]):
 @computation()
 class Constant(Computation[_T]):
     constant: _T
+
+    computation_type: t.ClassVar[ComputationType] = ComputationType.CONSTANT
 
     def _compute(self) -> _T:
         return self.constant
@@ -105,48 +134,55 @@ class AudioSource(Computation[AudioSignal]):
     audio_input: audio_tools.AudioInput
     samples: Computation[int]
 
+    computation_type: t.ClassVar[ComputationType] = ComputationType.DYNAMIC
+
     def _compute(self) -> AudioSignal:
-        samples = np.array(self._input_device.get_samples(self.samples.value()))
-        return t.cast(AudioSignal, samples)
+        return np.array(self._input_device.get_samples(self.samples.value()))
 
 
 @computation()
-class Hamming(Computation[_A1]):
-    audio_sample: Computation[_A1]
-    samples: int
-
-    def __post_init__(self) -> None:
-        self._window = np.hamming(self.samples)
-        super().__post_init__()
+class HammingWindow(Computation[_A1]):
+    sample_count: Computation[int]
 
     def _compute(self) -> _A1:
-        return np.multiply(self.audio_sample.value(), self._window)
+        return np.hamming(self.sample_count.value())
+
+
+@computation()
+class FastFourierTransformFrequencies(Computation[OneDArray]):
+    sample_count: Computation[int]
+    sample_delta: Computation[float]
+
+    def _compute(self) -> OneDArray:
+        return fft.rfftfreq(self.sample_count.value(), d=self.sample_delta.value())
 
 
 @computation()
 class FastFourierTransform(Computation[FrequencySpectrum]):
     amplitutde_spectrum: Computation[AudioSignal]
-    samples: int
-    sample_delta: float
+    sample_delta: Computation[float]
 
-    def __post_init__(self) -> None:
-        self.frequencies = fft.rfftfreq(self.samples, d=self.sample_delta)
-        super().__post_init__()
-
-    def _compute(self, data) -> FrequencySpectrum:
-        return np.absolute(fft.rfft(data) * self.sample_delta)
+    def _compute(self) -> FrequencySpectrum:
+        return np.absolute(
+            fft.rfft(self.amplitutde_spectrum.value()) * self.sample_delta.value()
+        )
 
 
 @computation()
-class AWeighting(Computation[FrequencySpectrum]):
-    input_spectrum: Computation[FrequencySpectrum]
-    frequencies: OneDArray
-
-    def __post_init__(self) -> None:
-        self.weights = np.interp(
-            self.frequencies, a_weighting_table.frequencies, a_weighting_table.weights
-        )
-        super().__post_init__()
+class AWeightingVector(Computation[FrequencySpectrum]):
+    frequencies: Computation[OneDArray]
 
     def _compute(self) -> FrequencySpectrum:
-        return self.input_spectrum.value() * self.weights
+        return  np.interp(
+            self.frequencies.value(), a_weighting_table.frequencies, a_weighting_table.weights
+        )
+
+
+@computation()
+class Multiply(Computation[OneDArray]):
+    left_input: Computation[OneDArray]
+    right_input: Computation[OneDArray]
+
+    def _compute(self) -> OneDArray:
+        return self.left_input.value() * self.right_input.value()
+
