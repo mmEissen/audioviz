@@ -16,10 +16,6 @@ from numpy.core.defchararray import multiply
 from audioviz import audio_tools, a_weighting_table
 
 
-def computation():
-    return dataclasses.dataclass()
-
-
 _T = t.TypeVar("_T")
 
 
@@ -29,6 +25,10 @@ class ComputationCycleError(Exception):
 
 class InvalidComputationTypeError(Exception):
     pass
+
+
+def computation():
+    return dataclasses.dataclass()
 
 
 class ComputationType(enum.Enum):
@@ -186,3 +186,10 @@ class Multiply(Computation[OneDArray]):
     def _compute(self) -> OneDArray:
         return self.left_input.value() * self.right_input.value()
 
+
+@computation()
+class Log2(Computation[OneDArray]):
+    input_: Computation[OneDArray]
+
+    def _compute(self) -> OneDArray:
+        return np.log2(self.input_.value())
