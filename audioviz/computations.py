@@ -3,12 +3,13 @@ from __future__ import annotations
 import abc
 import dataclasses
 import typing as t
+from _pytest.python_api import ApproxMapping
 
 import numpy as np
 from airpixel import client
-from numpy.lib.arraysetops import isin
+from numpy import fft
 
-from audioviz import audio_tools
+from audioviz import audio_tools, a_weighting_table
 
 
 def computation():
@@ -84,30 +85,68 @@ class Monitor(Computation[_T]):
         return self.input_.value()
 
 
-class AudioSignal(np.ndarray):
+class OneDArray(np.ndarray):
+    pass
+
+
+_A1 = t.TypeVar("_A1", bound=OneDArray)
+
+
+class AudioSignal(OneDArray):
+    pass
+
+
+class FrequencySpectrum(OneDArray):
     pass
 
 
 @computation()
 class AudioSource(Computation[AudioSignal]):
     audio_input: audio_tools.AudioInput
-    samples: int
+    samples: Computation[int]
 
     def _compute(self) -> AudioSignal:
-        samples = np.array(self._input_device.get_samples(self._samples))
+        samples = np.array(self._input_device.get_samples(self.samples.value()))
         return t.cast(AudioSignal, samples)
 
 
 @computation()
-class Hamming(Computation[AudioSignal]):
+class Hamming(Computation[_A1]):
+    audio_sample: Computation[_A1]
     samples: int
 
-    def __post_init__(self):
-        pass
+    def __post_init__(self) -> None:
+        self._window = np.hamming(self.samples)
+        super().__post_init__()
 
-    def setup(self, samples, monitor_client=None):
-        super().setup(monitor_client)
-        self._window = np.hamming(samples)
+    def _compute(self) -> _A1:
+        return np.multiply(self.audio_sample.value(), self._window)
 
-    def run(self, data):
-        self.emit(np.multiply(data, self._window))
+
+@computation()
+class FastFourierTransform(Computation[FrequencySpectrum]):
+    amplitutde_spectrum: Computation[AudioSignal]
+    samples: int
+    sample_delta: float
+
+    def __post_init__(self) -> None:
+        self.frequencies = fft.rfftfreq(self.samples, d=self.sample_delta)
+        super().__post_init__()
+
+    def _compute(self, data) -> FrequencySpectrum:
+        return np.absolute(fft.rfft(data) * self.sample_delta)
+
+
+@computation()
+class AWeighting(Computation[FrequencySpectrum]):
+    input_spectrum: Computation[FrequencySpectrum]
+    frequencies: OneDArray
+
+    def __post_init__(self) -> None:
+        self.weights = np.interp(
+            self.frequencies, a_weighting_table.frequencies, a_weighting_table.weights
+        )
+        super().__post_init__()
+
+    def _compute(self) -> FrequencySpectrum:
+        return self.input_spectrum.value() * self.weights
