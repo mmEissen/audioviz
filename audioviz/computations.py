@@ -92,7 +92,7 @@ class Computation(abc.ABC, t.Generic[_T]):
         super().__setattr__(name, value)
         if isinstance(value, Computation):
             self._check_cycle()
-    
+
     def __str__(self) -> str:
         attributes = [
             f"{field.name}={getattr(self, field.name)}"
@@ -145,7 +145,7 @@ class AudioSource(Computation[AudioSignal]):
     computation_type: t.ClassVar[ComputationType] = ComputationType.DYNAMIC
 
     def _compute(self) -> AudioSignal:
-        return np.array(self._input_device.get_samples(self.samples.value()))
+        return np.array(self.audio_input.get_samples(self.samples.value()))
 
 
 @computation()
@@ -181,8 +181,10 @@ class AWeightingVector(Computation[FrequencySpectrum]):
     frequencies: Computation[OneDArray]
 
     def _compute(self) -> FrequencySpectrum:
-        return  np.interp(
-            self.frequencies.value(), a_weighting_table.frequencies, a_weighting_table.weights
+        return np.interp(
+            self.frequencies.value(),
+            a_weighting_table.frequencies,
+            a_weighting_table.weights,
         )
 
 
@@ -201,3 +203,40 @@ class Log2(Computation[OneDArray]):
 
     def _compute(self) -> OneDArray:
         return np.log2(self.input_.value())
+
+
+@computation()
+class Resample(Computation[OneDArray]):
+    input_y: Computation[OneDArray]
+    input_x: Computation[OneDArray]
+    sample_points: Computation[OneDArray]
+
+    def _compute(self) -> OneDArray:
+        return np.interp(
+            self.sample_points.value(),
+            self.input_x.value(),
+            self.input_y.value(),
+            left=0,
+            right=0,
+        )
+
+
+@computation()
+class Mirror(Computation[OneDArray]):
+    input_: Computation[OneDArray]
+    right_side: Computation[bool]
+
+    def _compute(self) -> OneDArray:
+        if self.right_side:
+            return np.concatenate([self.input_.value(), np.flip(self.input_.value())])
+        else:
+            return np.concatenate([np.flip(self.input_.value()), self.input_.value()])
+
+
+@computation()
+class Roll(Computation[OneDArray]):
+    input_: Computation[OneDArray]
+    amount: Computation[int]
+
+    def _compute(self) -> OneDArray:
+        return np.roll(self.input_.value(), self.amount.value())
