@@ -9,23 +9,7 @@ import click
 from audioviz import audio_tools, computations
 
 
-BEAMS = 36
-LED_PER_BEAM = 8
-
-VISUALIZE = bool(os.environ.get("VISUALIZE", False))
-
 SAMPLE_RATE = 22050
-
-PORT = 50000
-
-VOLUME_MIN_THRESHOLD = 0
-VOLUME_FALLOFF = 1.1
-VOLUME_DEBUG = 0
-
-FADE_FALLOFF = 32
-
-FIRST_OCTAVE = 8
-NUM_OCTAVES = 6
 
 WINDOW_SIZE_SEC = 0.05
 
@@ -80,7 +64,7 @@ def make_computation(ip_address: str, port: int):
     resampled = computations.Monitor(
         computations.Resample(
             computations.Log2(fft_frequencies),
-            computations.Monitor(a_weighted),
+            a_weighted,
             computations.Linspace(lowest_note, highest_note, half_beam_count,),
         ),
         "resampled",
@@ -115,7 +99,7 @@ def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
     while True:
         comp.value()
         comp.clean()
-        time.sleep(0.05)
+        time.sleep(1 / 60)
 
 
 if __name__ == "__main__":

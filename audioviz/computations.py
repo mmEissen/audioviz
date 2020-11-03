@@ -10,6 +10,7 @@ import math
 import numpy as np
 from airpixel import client
 from numpy import fft
+import numpy
 
 from audioviz import audio_tools, a_weighting_table
 
@@ -52,7 +53,7 @@ class Benchmarker(NoBenchmarker):
         if not self.measurements:
             return float("+inf")
         return sum(self.measurements) / len(self.measurements)
-    
+
     def start(self):
         self.start_time = time.time()
 
@@ -105,7 +106,7 @@ class Computation(abc.ABC, t.Generic[_T]):
             for field in dataclasses.fields(self)
             if isinstance(getattr(self, field.name), Computation)
         )
-    
+
     def set_benchmark(self, value: bool) -> None:
         for input_ in self.inputs():
             input_.set_benchmark(value)
@@ -220,13 +221,12 @@ class Slice(Computation[OneDArray]):
 
     def _compute(self) -> OneDArray:
         if self.start.value() is not None and self.stop.value() is not None:
-            return self.input_.value()[self.start.value():self.stop.value()]
+            return self.input_.value()[self.start.value() : self.stop.value()]
         if self.start.value() is not None:
-            return self.input_.value()[self.start.value():]
+            return self.input_.value()[self.start.value() :]
         if self.stop.value() is not None:
-            return self.input_.value()[:self.stop.value()]
+            return self.input_.value()[: self.stop.value()]
         return self.input_.value()
-
 
 
 @computation()
@@ -302,13 +302,13 @@ class Resample(Computation[OneDArray]):
     sample_points: Computation[OneDArray]
 
     def _compute(self) -> OneDArray:
-        return np.interp(
-            self.sample_points.value(),
-            self.input_x.value(),
-            self.input_y.value(),
-            left=0,
-            right=0,
+        masked_array = np.ma.empty((len(self.sample_points.value()), len(self.input_y.value())))
+        masked_array.data[...] = self.input_y.value()
+        bucket_indexes = np.arange(len(self.sample_points.value()))
+        masked_array.mask = (
+            np.digitize(self.input_x.value(), self.sample_points.value()) - 1 != bucket_indexes[:, np.newaxis]
         )
+        return masked_array.max(axis=1).filled(0)
 
 
 @computation()
@@ -370,7 +370,9 @@ class Star(Computation[None]):
         self._resolution = self.led_per_beam.value() * 16
         self._pre_computed_strips = self._pre_compute_strips(self._resolution)
         self._colors = np.transpose(
-            np.array([np.array([0, 1, 1])] * self.led_per_beam.value() * self.beams.value())
+            np.array(
+                [np.array([0, 1, 1])] * self.led_per_beam.value() * self.beams.value()
+            )
         )
 
         self._index_mask = np.zeros(self.beams.value(), dtype="int")
