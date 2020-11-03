@@ -150,10 +150,11 @@ class Constant(Computation[_T]):
 @computation()
 class Monitor(Computation[_T]):
     input_: Computation[_T]
+    name: str
     monitor_client: client.MonitorClient
 
     def _compute(self) -> _T:
-        self.monitor_client.send_np_array(self.input_.value())
+        self.monitor_client.send_np_array(self.name, self.input_.value())
         return self.input_.value()
 
 
@@ -212,6 +213,23 @@ class FastFourierTransform(Computation[FrequencySpectrum]):
 
 
 @computation()
+class Slice(Computation[OneDArray]):
+    input_: Computation[OneDArray]
+    start: Computation[t.Optional[int]] = Constant(None)
+    stop: Computation[t.Optional[int]] = Constant(None)
+
+    def _compute(self) -> OneDArray:
+        if self.start.value() is not None and self.stop.value() is not None:
+            return self.input_.value()[self.start.value():self.stop.value()]
+        if self.start.value() is not None:
+            return self.input_.value()[self.start.value():]
+        if self.stop.value() is not None:
+            return self.input_.value()[:self.stop.value()]
+        return self.input_.value()
+
+
+
+@computation()
 class AWeightingVector(Computation[FrequencySpectrum]):
     frequencies: Computation[OneDArray]
 
@@ -224,12 +242,39 @@ class AWeightingVector(Computation[FrequencySpectrum]):
 
 
 @computation()
-class Multiply(Computation[OneDArray]):
-    left_input: Computation[OneDArray]
-    right_input: Computation[OneDArray]
+class Multiply(Computation[_T]):
+    left_input: Computation[_T]
+    right_input: Computation[_T]
 
-    def _compute(self) -> OneDArray:
+    def _compute(self) -> _T:
         return self.left_input.value() * self.right_input.value()
+
+
+@computation()
+class Add(Computation[_T]):
+    left_input: Computation[_T]
+    right_input: Computation[_T]
+
+    def _compute(self) -> _T:
+        return self.left_input.value() + self.right_input.value()
+
+
+@computation()
+class Subtract(Computation[_T]):
+    left_input: Computation[_T]
+    right_input: Computation[_T]
+
+    def _compute(self) -> _T:
+        return self.left_input.value() - self.right_input.value()
+
+
+@computation()
+class Divide(Computation[_T]):
+    left_input: Computation[_T]
+    right_input: Computation[_T]
+
+    def _compute(self) -> _T:
+        return self.left_input.value() / self.right_input.value()
 
 
 @computation()
@@ -252,8 +297,8 @@ class Log2(Computation[OneDArray]):
 
 @computation()
 class Resample(Computation[OneDArray]):
-    input_y: Computation[OneDArray]
     input_x: Computation[OneDArray]
+    input_y: Computation[OneDArray]
     sample_points: Computation[OneDArray]
 
     def _compute(self) -> OneDArray:

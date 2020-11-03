@@ -46,7 +46,6 @@ class AudioInput(LoopingThread):
     def __init__(
         self,
         device = "default",
-        cardindex=0,
         sample_rate = 22050,
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
@@ -61,7 +60,7 @@ class AudioInput(LoopingThread):
 
         self._clear_buffer()
 
-        self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device, cardindex=cardindex)
+        self._mic = alsa.PCM(alsa.PCM_CAPTURE, alsa.PCM_NORMAL, device)
         self._mic.setperiodsize(period_size)
         self._mic.setrate(sample_rate)
         self._mic.setformat(alsa.PCM_FORMAT_S32_LE)

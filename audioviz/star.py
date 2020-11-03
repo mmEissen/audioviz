@@ -1,6 +1,6 @@
-from audioviz.computations import Benchmarker
+from audioviz.computations import Benchmarker, Computation, Monitor, Resample
+import time
 import typing as t
-import sys
 import os
 
 from airpixel import client as air_client
@@ -31,7 +31,7 @@ WINDOW_SIZE_SEC = 0.05
 
 
 def make_computation(ip_address: str, port: int):
-    mon_client = air_client.MonitorClient("monitoring_uds")
+    monitor_client = air_client.MonitorClient("monitoring_uds")
 
     audio_input = audio_tools.AudioInput(sample_rate=SAMPLE_RATE)
     audio_input.start()
@@ -46,39 +46,56 @@ def make_computation(ip_address: str, port: int):
     half_beam_count = computations.Constant(18)
     leds_per_beam = computations.Constant(8)
 
-    fft_frequencies = computations.FastFourierTransformFrequencies(
-        sample_count, sample_delta
+    slice_start = computations.Constant(1)
+    fft_frequencies = computations.Slice(
+        computations.FastFourierTransformFrequencies(sample_count, sample_delta),
+        slice_start,
     )
 
-    return computations.Star(
+    audio_source = computations.Monitor(
+        computations.AudioSource(audio_input, sample_count,),
+        "audio_in",
+        monitor_client,
+    )
+    hamming_audio = computations.Monitor(
+        computations.Multiply(audio_source, computations.HammingWindow(sample_count),),
+        "hamming",
+        monitor_client,
+    )
+    fft_result = computations.Monitor(
+        computations.Slice(
+            computations.FastFourierTransform(hamming_audio, sample_delta,),
+            slice_start,
+        ),
+        "fft",
+        monitor_client,
+    )
+    a_weighted = computations.Monitor(
+        computations.Multiply(
+            computations.AWeightingVector(fft_frequencies), fft_result
+        ),
+        "a_weighted",
+        monitor_client,
+    )
+    resampled = computations.Monitor(
+        computations.Resample(
+            computations.Log2(fft_frequencies),
+            computations.Monitor(a_weighted),
+            computations.Linspace(lowest_note, highest_note, half_beam_count,),
+        ),
+        "resampled",
+        monitor_client,
+    )
+    final = computations.Monitor(
         computations.Roll(
-            computations.Mirror(
-                computations.VolumeNormalizer(
-                    computations.Resample(
-                        computations.Log2(fft_frequencies),
-                        computations.Multiply(
-                            computations.AWeightingVector(fft_frequencies),
-                            computations.FastFourierTransform(
-                                computations.Multiply(
-                                    computations.AudioSource(audio_input, sample_count),
-                                    computations.HammingWindow(sample_count),
-                                ),
-                                sample_delta,
-                            ),
-                        ),
-                        computations.Linspace(
-                            lowest_note, highest_note, half_beam_count
-                        ),
-                    ),
-                )
-            ),
+            computations.Mirror(computations.VolumeNormalizer(resampled),),
             computations.Constant(16),
         ),
-        leds_per_beam,
-        beam_count,
-        ip_address,
-        port,
+        "final",
+        monitor_client,
     )
+
+    return computations.Star(final, leds_per_beam, beam_count, ip_address, port)
 
 
 @click.command()
@@ -86,17 +103,19 @@ def make_computation(ip_address: str, port: int):
 @click.argument("port", required=True, type=int)
 @click.option("--graph", is_flag=True)
 @click.option("--benchmark", is_flag=True)
-def main(ip_address:str, port: int, graph: bool, benchmark: bool) -> None:
+def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
     comp = make_computation(ip_address, port)
 
     if graph or benchmark:
         from audioviz import computation_graph
+
         print(computation_graph.make_graph(comp, benchmark))
         return
 
     while True:
         comp.value()
         comp.clean()
+        time.sleep(0.05)
 
 
 if __name__ == "__main__":

@@ -1,15 +1,10 @@
 monitor:
-    server: "ubuntu"
+    server: "0.0.0.0"
     port: 50001
     streams:
-        # - name: mic
+        # - name: audio_in
+        - name: hamming
         # - name: fft
-        # - name: a-weighting
-        - name: sampled
-        - name: smoothed
-        # - name: folded
-        # - name: max
-        - name: normalized
-        - name: mirrored
-        - name: square
-        # - name: log
+        - name: a_weighted
+        - name: resampled
+        - name: final
