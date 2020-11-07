@@ -9,7 +9,7 @@ import click
 from audioviz import audio_tools, computations
 
 
-SAMPLE_RATE = 22050
+SAMPLE_RATE = 44100
 
 WINDOW_SIZE_SEC = 0.05
 
