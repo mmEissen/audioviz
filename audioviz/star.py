@@ -27,7 +27,7 @@ def make_computation(ip_address: str, port: int):
     lowest_note = computations.Constant(6.02236781303)
     highest_note = computations.Constant(11.0313565963)
     beam_count = computations.Constant(36)
-    half_beam_count = computations.Constant(18)
+    half_beam_count_plus1 = computations.Constant(19)
     leds_per_beam = computations.Constant(8)
 
     slice_start = computations.Constant(1)
@@ -64,8 +64,8 @@ def make_computation(ip_address: str, port: int):
     resampled = computations.Monitor(
         computations.Resample(
             computations.Log2(fft_frequencies),
-            a_weighted,
-            computations.Linspace(lowest_note, highest_note, half_beam_count,),
+            fft_result,
+            computations.Linspace(lowest_note, highest_note, half_beam_count_plus1,),
         ),
         "resampled",
         monitor_client,

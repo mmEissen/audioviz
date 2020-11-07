@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 import dataclasses
 import enum
+import pdb
 import time
 import typing as t
 import math
@@ -302,9 +303,10 @@ class Resample(Computation[OneDArray]):
     sample_points: Computation[OneDArray]
 
     def _compute(self) -> OneDArray:
-        masked_array = np.ma.empty((len(self.sample_points.value()), len(self.input_y.value())))
+        bucket_count = len(self.sample_points.value()) - 1
+        masked_array = np.ma.empty((bucket_count, len(self.input_y.value())))
         masked_array.data[...] = self.input_y.value()
-        bucket_indexes = np.arange(len(self.sample_points.value()))
+        bucket_indexes = np.arange(bucket_count)
         masked_array.mask = (
             np.digitize(self.input_x.value(), self.sample_points.value()) - 1 != bucket_indexes[:, np.newaxis]
         )
