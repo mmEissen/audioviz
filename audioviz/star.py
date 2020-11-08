@@ -1,13 +1,12 @@
-from audioviz.computations import Benchmarker, Computation, Monitor, Resample
 import time
-import typing as t
-import os
 
 from airpixel import client as air_client
 import click
 
 from audioviz import audio_tools, computations
 
+
+CALIBRATION_FILE = ".calibration"
 
 SAMPLE_RATE = 44100
 

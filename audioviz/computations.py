@@ -85,6 +85,11 @@ class Computation(abc.ABC, t.Generic[_T]):
         self.benchmark.stop()
         return self._value
 
+    def volatile_value(self) -> _T:
+        value = self.value()
+        self.clean()
+        return value
+
     def clean(self) -> None:
         if self.is_constant():
             return
@@ -310,6 +315,7 @@ class Resample(Computation[OneDArray]):
         masked_array.mask = (
             np.digitize(self.input_x.value(), self.sample_points.value()) - 1 != bucket_indexes[:, np.newaxis]
         )
+        import pdb; pdb.set_trace()
         return masked_array.max(axis=1).filled(0)
 
 
@@ -355,6 +361,14 @@ class VolumeNormalizer(Computation[OneDArray]):
 
     def _compute(self) -> OneDArray:
         return self.normalizer.normalize(self.audio.value(), self.time.value())
+
+
+@computation()
+class Maximum(Computation[float]):
+    samples: Computation[OneDArray]
+
+    def _compute(self) -> OneDArray:
+        return np.max(self.samples.value())
 
 
 @computation()
