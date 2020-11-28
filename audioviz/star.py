@@ -63,7 +63,7 @@ def make_computation(ip_address: str, port: int):
     resampled = computations.Monitor(
         computations.Resample(
             computations.Log2(fft_frequencies),
-            fft_result,
+            a_weighted,
             computations.Linspace(lowest_note, highest_note, half_beam_count_plus1,),
         ),
         "resampled",
@@ -78,7 +78,14 @@ def make_computation(ip_address: str, port: int):
         monitor_client,
     )
 
-    return computations.Star(final, leds_per_beam, beam_count, ip_address, port)
+    return computations.Star(
+        final,
+        leds_per_beam,
+        beam_count,
+        computations.BeamMasks(leds_per_beam, computations.Constant(16)),
+        ip_address,
+        port,
+    )
 
 
 @click.command()

@@ -370,10 +370,40 @@ class Maximum(Computation[float]):
 
 
 @computation()
+class BeamMasks(Computation[t.Any]):
+    led_count: Computation[int]
+    steps_per_led: Computation[int]
+
+    ON = 1
+    OFF = 0
+
+    def _make_reverse_beam(self, value):
+        return np.flip(self._make_beam(value), axis=0)
+
+    def _make_beam(self, value):
+        scaled_value = value * self.led_per_beam.value()
+        return np.array(
+            [self.ON for i in range(math.floor(scaled_value))]
+            + [self.ON * (scaled_value - math.floor(scaled_value))]
+            + [
+                self.OFF
+                for _ in range(self.led_per_beam.value() - math.floor(scaled_value) - 1)
+            ]
+        )
+
+    def _compute(self) -> t.Any:
+        resolution = self.led_count.value() * self.steps_per_led.value()
+        strips = [self._make_strip(i / resolution) for i in range(resolution)]
+        reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
+        return np.array(strips + reverse)
+
+
+@computation()
 class Star(Computation[None]):
     strip_values: Computation[OneDArray]
     led_per_beam: Computation[int]
     beams: Computation[int]
+    beam_mask: Computation[t.Any]
     ip_address: str
     port: int
 
@@ -381,8 +411,6 @@ class Star(Computation[None]):
         self.client = client.AirClient(
             self.ip_address, int(self.port), client.ColorMethodGRB
         )
-        self._resolution = self.led_per_beam.value() * 16
-        self._pre_computed_strips = self._pre_compute_strips(self._resolution)
         self._colors = np.transpose(
             np.array(
                 [np.array([0, 1, 1])] * self.led_per_beam.value() * self.beams.value()
@@ -397,30 +425,11 @@ class Star(Computation[None]):
         ).reshape((self.beams.value() * self.led_per_beam.value(), 3))
         super().__post_init__()
 
-    def _make_strip(self, value):
-        scaled_value = value * self.led_per_beam.value()
-        return np.array(
-            [0.3 for i in range(math.floor(scaled_value))]
-            + [0.3 * (scaled_value - math.floor(scaled_value))]
-            + [
-                0
-                for _ in range(self.led_per_beam.value() - math.floor(scaled_value) - 1)
-            ]
-        )
-
-    def _make_reverse_strip(self, value):
-        return np.flip(self._make_strip(value), axis=0)
-
-    def _pre_compute_strips(self, resolution):
-        strips = [self._make_strip(i / resolution) for i in range(resolution)]
-        reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
-        return np.array(strips + reverse)
-
     def _values_to_rgb(self, values):
         indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self._resolution).astype(
             "int"
         ) + self._index_mask
-        alphas = self._pre_computed_strips[indexes].reshape(-1)
+        alphas = self.beam_mask.value()[indexes].reshape(-1)
         return np.transpose(alphas * self._colors)
 
     def _compute(self) -> None:
