@@ -3,7 +3,6 @@ from __future__ import annotations
 import abc
 import dataclasses
 import enum
-import pdb
 import time
 import typing as t
 import math
@@ -315,7 +314,6 @@ class Resample(Computation[OneDArray]):
         masked_array.mask = (
             np.digitize(self.input_x.value(), self.sample_points.value()) - 1 != bucket_indexes[:, np.newaxis]
         )
-        import pdb; pdb.set_trace()
         return masked_array.max(axis=1).filled(0)
 
 

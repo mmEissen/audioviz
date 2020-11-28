@@ -15,3 +15,26 @@ Requirements on Ubuntu 20 LTS on RaspberyPI 4:
 - python3-pip
 - poetry
 - pybind11 (from pip)
+
+# Protocol
+
+```mermaid
+sequenceDiagram
+    participant F as Framework 
+    participant A as Application
+    participant D as Device
+    activate D
+    activate F
+    D->>F: device_id, port
+    F->>D: reponse_port
+    F->>A: launch(device_ip_address, port)
+    activate A
+    loop
+        A-->>D: pixel data
+        D-->>A: status reports
+    end
+    F->>A: terminate
+    deactivate A
+    deactivate D
+    deactivate F
+```
