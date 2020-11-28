@@ -16,4 +16,6 @@ sudo systemctl daemon-reload
 sudo systemctl enable audioviz
 sudo systemctl restart audioviz
 
+sudo journalctl -f -u audioviz.service
+
 popd
