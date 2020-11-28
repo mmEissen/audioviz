@@ -1,7 +1,7 @@
 Audioviz
 ========
 
-This project is a prototype and sandbox to play around with audio visualization on NeoPixels. I did a short talk on the topic which can be found on [youtube](https://youtu.be/JJu3Z-2arnY).
+This project is a prototype and sandbox to play around with audio visualization on NeoPixels.
 
 Requirements on Ubuntu 20 LTS on RaspberyPI 4:
 
@@ -15,6 +15,11 @@ Requirements on Ubuntu 20 LTS on RaspberyPI 4:
 - python3-pip
 - poetry
 - pybind11 (from pip)
+
+These are needed because you will need to build numpy and scipy. 
+
+If you wish to run the monitoring tool on a development machine you will need:
+- libxcb-xinerama0
 
 # Protocol
 

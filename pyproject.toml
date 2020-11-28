@@ -10,8 +10,8 @@ pytest = {version = "^5.4.2", optional = true}
 black = {version = "^19.10b0", optional = true}
 mypy = {version = "^0.770", optional = true}
 flake8 = {version = "^3.8.1", optional = true}
-numpy = "^1.19.1"
-pyalsaaudio = "^0.9.0"
+numpy = "1.19.1"
+pyalsaaudio = "0.9.0"
 scipy = "1.5.2"
 pypiper = "^0.5.3"
 airpixel = "^0.9"
