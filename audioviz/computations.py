@@ -392,8 +392,8 @@ class BeamMasks(Computation[t.Any]):
 
     def _compute(self) -> t.Any:
         resolution = self.resolution.value()
-        strips = [self._make_strip(i / resolution) for i in range(resolution)]
-        reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
+        strips = [self._make_beam(i / resolution) for i in range(resolution)]
+        reverse = [self._make_reverse_beam(i / resolution) for i in range(resolution)]
         return np.array(strips + reverse)
 
 
