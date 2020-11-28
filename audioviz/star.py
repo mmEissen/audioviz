@@ -77,12 +77,14 @@ def make_computation(ip_address: str, port: int):
         "final",
         monitor_client,
     )
+    resolution = computations.Multiply(leds_per_beam, computations.Constant(16))
 
     return computations.Star(
         final,
         leds_per_beam,
+        resolution,
         beam_count,
-        computations.BeamMasks(leds_per_beam, computations.Constant(16)),
+        computations.BeamMasks(resolution),
         ip_address,
         port,
     )

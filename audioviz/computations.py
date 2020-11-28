@@ -371,8 +371,7 @@ class Maximum(Computation[float]):
 
 @computation()
 class BeamMasks(Computation[t.Any]):
-    led_count: Computation[int]
-    steps_per_led: Computation[int]
+    resolution: Computation[int]
 
     ON = 1
     OFF = 0
@@ -392,7 +391,7 @@ class BeamMasks(Computation[t.Any]):
         )
 
     def _compute(self) -> t.Any:
-        resolution = self.led_count.value() * self.steps_per_led.value()
+        resolution = self.resolution.value()
         strips = [self._make_strip(i / resolution) for i in range(resolution)]
         reverse = [self._make_reverse_strip(i / resolution) for i in range(resolution)]
         return np.array(strips + reverse)
@@ -402,6 +401,7 @@ class BeamMasks(Computation[t.Any]):
 class Star(Computation[None]):
     strip_values: Computation[OneDArray]
     led_per_beam: Computation[int]
+    resolution: Computation[int]
     beams: Computation[int]
     beam_mask: Computation[t.Any]
     ip_address: str
@@ -418,7 +418,7 @@ class Star(Computation[None]):
         )
 
         self._index_mask = np.zeros(self.beams.value(), dtype="int")
-        self._index_mask[1::2] = self._resolution
+        self._index_mask[1::2] = self.resolution.value()
 
         self._blank_frame = np.zeros(
             self.beams.value() * self.led_per_beam.value() * 3
@@ -426,7 +426,7 @@ class Star(Computation[None]):
         super().__post_init__()
 
     def _values_to_rgb(self, values):
-        indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self._resolution).astype(
+        indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self.resolution.value()).astype(
             "int"
         ) + self._index_mask
         alphas = self.beam_mask.value()[indexes].reshape(-1)
