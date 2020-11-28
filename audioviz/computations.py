@@ -371,6 +371,7 @@ class Maximum(Computation[float]):
 
 @computation()
 class BeamMasks(Computation[t.Any]):
+    led_per_beam: Computation[int]
     resolution: Computation[int]
 
     ON = 1
