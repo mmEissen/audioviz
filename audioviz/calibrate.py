@@ -16,21 +16,23 @@ def make_computation():
     sample_count = computations.Constant(
         audio_input.seconds_to_samples(star.WINDOW_SIZE_SEC)
     )
-    return computations.Max(computations.AudioSource(audio_input, sample_count))
+    return computations.Maximum(computations.AudioSource(audio_input, sample_count))
 
 
 def get_value(computation):
-    computation.volatile_value()
+    value = computation.volatile_value()
     time.sleep(2 * star.WINDOW_SIZE_SEC)
+    return value
+
 
 @click.command()
-def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
-    comp = make_computation(ip_address, port)
+def main() -> None:
+    comp = make_computation()
 
     max_value = max(get_value(comp) for _ in range(CALIBRATION_SAMPLES))
 
     with open(star.CALIBRATION_FILE, "w") as calibration_file:
-        calibration_file.write(max_value * CALIBRATION_FACTOR)
+        calibration_file.write(str(max_value * CALIBRATION_FACTOR))
 
 
 if __name__ == "__main__":

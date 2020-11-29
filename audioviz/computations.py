@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import collections
 import dataclasses
 import enum
 import time
@@ -253,6 +254,34 @@ class Multiply(Computation[_T]):
 
     def _compute(self) -> _T:
         return self.left_input.value() * self.right_input.value()
+
+
+@computation()
+class History(Computation[t.List[_T]]):
+    input_: Computation[_T]
+    size: int
+
+    def __post_init__(self):
+        super().__post_init__()
+        self._memory = collections.deque(maxlen=self.size)
+
+    def _compute(self) -> t.List[_T]:
+        self._memory.append(self.input_.value())
+        return list(self._memory)
+
+
+@computation()
+class ThresholdToggle(Computation[bool]):
+    signal_history: Computation[t.List[OneDArray]]
+    threshold: Computation[float]
+
+    def _compute(self) -> bool:
+        active = sum(
+            1
+            for samples in self.signal_history.value()
+            if max(samples) > self.threshold.value()
+        )
+        return active > len(self.signal_history.value()) // 2
 
 
 @computation()

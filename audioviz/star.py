@@ -12,8 +12,10 @@ SAMPLE_RATE = 44100
 
 WINDOW_SIZE_SEC = 0.05
 
+THRESHOLD_HISTORY = 6
 
-def make_computation(ip_address: str, port: int):
+
+def make_computation(ip_address: str, port: int, volume_threshold: float):
     monitor_client = air_client.MonitorClient("monitoring_uds")
 
     audio_input = audio_tools.AudioInput(sample_rate=SAMPLE_RATE)
@@ -40,6 +42,15 @@ def make_computation(ip_address: str, port: int):
         "audio_in",
         monitor_client,
     )
+
+    on_toggle = computations.ThresholdToggle(
+        computations.History(
+            audio_source,
+            THRESHOLD_HISTORY,
+        ),
+        computations.Constant(volume_threshold)
+    )
+
     hamming_audio = computations.Monitor(
         computations.Multiply(audio_source, computations.HammingWindow(sample_count),),
         "hamming",
@@ -71,7 +82,12 @@ def make_computation(ip_address: str, port: int):
     )
     final = computations.Monitor(
         computations.Roll(
-            computations.Mirror(computations.VolumeNormalizer(resampled),),
+            computations.Mirror(
+                computations.Multiply(
+                    computations.VolumeNormalizer(resampled),
+                    on_toggle,
+                ),
+            ),
             computations.Constant(16),
         ),
         "final",
@@ -97,7 +113,13 @@ def make_computation(ip_address: str, port: int):
 @click.option("--graph", is_flag=True)
 @click.option("--benchmark", is_flag=True)
 def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
-    comp = make_computation(ip_address, port)
+    try:
+        with open(CALIBRATION_FILE) as calibration_file:
+            volume_threshold = float(calibration_file.read().strip())
+    except (OSError, ValueError):
+        volume_threshold = 0
+
+    comp = make_computation(ip_address, port, volume_threshold)
 
     if graph or benchmark:
         from audioviz import computation_graph
@@ -106,9 +128,11 @@ def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
         return
 
     while True:
+        start = time.time()
         comp.value()
         comp.clean()
-        time.sleep(1 / 60)
+        end = time.time()
+        time.sleep(max(1 / 60 - (end - start), 0))
 
 
 if __name__ == "__main__":
