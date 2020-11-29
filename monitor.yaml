@@ -3,7 +3,7 @@ monitor:
     port: 50001
     streams:
         # - name: audio_in
-        - name: hamming
+        - name: hamming_audio
         # - name: fft
         - name: a_weighted
         - name: resampled

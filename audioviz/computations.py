@@ -91,7 +91,7 @@ class Computation(abc.ABC, t.Generic[_T]):
         return value
 
     def clean(self) -> None:
-        if self.is_constant():
+        if self.is_constant() or self._is_clean:
             return
         for input_ in self.inputs():
             input_.clean()
@@ -155,14 +155,13 @@ class Constant(Computation[_T]):
 
 
 @computation()
-class Monitor(Computation[_T]):
+class Monitor(Computation[None]):
     input_: Computation[_T]
     name: str
     monitor_client: client.MonitorClient
 
-    def _compute(self) -> _T:
+    def _compute(self) -> None:
         self.monitor_client.send_np_array(self.name, self.input_.value())
-        return self.input_.value()
 
 
 class OneDArray(np.ndarray):

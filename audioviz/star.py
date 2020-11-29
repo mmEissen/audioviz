@@ -1,4 +1,5 @@
 import time
+import typing as t
 
 from airpixel import client as air_client
 import click
@@ -15,9 +16,17 @@ WINDOW_SIZE_SEC = 0.05
 THRESHOLD_HISTORY = 6
 
 
-def make_computation(ip_address: str, port: int, volume_threshold: float):
+def make_monitors(
+    **kwargs: computations.Computation,
+) -> t.List[computations.Computation]:
     monitor_client = air_client.MonitorClient("monitoring_uds")
+    return [
+        computations.Monitor(computation, name, monitor_client)
+        for name, computation in kwargs.items()
+    ]
 
+
+def make_computation(ip_address: str, port: int, volume_threshold: float):
     audio_input = audio_tools.AudioInput(sample_rate=SAMPLE_RATE)
     audio_input.start()
 
@@ -30,80 +39,61 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
     beam_count = computations.Constant(36)
     half_beam_count_plus1 = computations.Constant(19)
     leds_per_beam = computations.Constant(8)
-
     slice_start = computations.Constant(1)
+
     fft_frequencies = computations.Slice(
         computations.FastFourierTransformFrequencies(sample_count, sample_delta),
         slice_start,
     )
 
-    audio_source = computations.Monitor(
-        computations.AudioSource(audio_input, sample_count,),
-        "audio_in",
-        monitor_client,
-    )
+    audio_source = computations.AudioSource(audio_input, sample_count,)
 
     on_toggle = computations.ThresholdToggle(
-        computations.History(
-            audio_source,
-            THRESHOLD_HISTORY,
-        ),
-        computations.Constant(volume_threshold)
+        computations.History(audio_source, THRESHOLD_HISTORY,),
+        computations.Constant(volume_threshold),
     )
 
-    hamming_audio = computations.Monitor(
-        computations.Multiply(audio_source, computations.HammingWindow(sample_count),),
-        "hamming",
-        monitor_client,
+    hamming_audio = computations.Multiply(
+        audio_source, computations.HammingWindow(sample_count)
     )
-    fft_result = computations.Monitor(
-        computations.Slice(
-            computations.FastFourierTransform(hamming_audio, sample_delta,),
-            slice_start,
-        ),
-        "fft",
-        monitor_client,
+    fft_result = computations.Slice(
+        computations.FastFourierTransform(hamming_audio, sample_delta,), slice_start,
     )
-    a_weighted = computations.Monitor(
-        computations.Multiply(
-            computations.AWeightingVector(fft_frequencies), fft_result
-        ),
-        "a_weighted",
-        monitor_client,
+    a_weighted = computations.Multiply(
+        computations.AWeightingVector(fft_frequencies), fft_result
     )
-    resampled = computations.Monitor(
-        computations.Resample(
-            computations.Log2(fft_frequencies),
-            a_weighted,
-            computations.Linspace(lowest_note, highest_note, half_beam_count_plus1,),
-        ),
-        "resampled",
-        monitor_client,
+    resampled = computations.Resample(
+        computations.Log2(fft_frequencies),
+        a_weighted,
+        computations.Linspace(lowest_note, highest_note, half_beam_count_plus1,),
     )
-    final = computations.Monitor(
-        computations.Roll(
-            computations.Mirror(
-                computations.Multiply(
-                    computations.VolumeNormalizer(resampled),
-                    on_toggle,
-                ),
-            ),
-            computations.Constant(16),
+    final = computations.Roll(
+        computations.Mirror(
+            computations.Multiply(computations.VolumeNormalizer(resampled), on_toggle,),
         ),
-        "final",
-        monitor_client,
+        computations.Constant(16),
     )
     resolution = computations.Multiply(leds_per_beam, computations.Constant(16))
 
-    return computations.Star(
-        final,
-        leds_per_beam,
-        resolution,
-        beam_count,
-        computations.BeamMasks(leds_per_beam, resolution),
-        computations.Constant(0.5),
-        ip_address,
-        port,
+    return (
+        computations.Star(
+            final,
+            leds_per_beam,
+            resolution,
+            beam_count,
+            computations.BeamMasks(leds_per_beam, resolution),
+            computations.Constant(0.5),
+            ip_address,
+            port,
+        ),
+        make_monitors(
+            audio_source=audio_source,
+            hamming_audio=hamming_audio,
+            fft_result=fft_result,
+            a_weighted=a_weighted,
+            resampled=resampled,
+            final=final,
+        ),
     )
 
 
@@ -119,7 +109,7 @@ def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
     except (OSError, ValueError):
         volume_threshold = 0
 
-    comp = make_computation(ip_address, port, volume_threshold)
+    comp, monitors = make_computation(ip_address, port, volume_threshold)
 
     if graph or benchmark:
         from audioviz import computation_graph
@@ -130,7 +120,11 @@ def main(ip_address: str, port: int, graph: bool, benchmark: bool) -> None:
     while True:
         start = time.time()
         comp.value()
+        for monitor in monitors:
+            monitor.value()
         comp.clean()
+        for monitor in monitors:
+            monitor.clean()
         end = time.time()
         time.sleep(max(1 / 60 - (end - start), 0))
 
