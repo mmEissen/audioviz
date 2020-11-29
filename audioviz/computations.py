@@ -429,6 +429,19 @@ class BeamMasks(Computation[t.Any]):
 
 
 @computation()
+class ColorMask(Computation[t.Any]):
+    led_per_beam: Computation[int]
+    beams: Computation[int]
+
+    def _compute(self) -> t.Any:
+        return np.transpose(
+            np.array(
+                [np.array([0, 1, 1])] * self.led_per_beam.value() * self.beams.value()
+            )
+        )
+
+
+@computation()
 class Star(Computation[None]):
     strip_values: Computation[OneDArray]
     led_per_beam: Computation[int]
