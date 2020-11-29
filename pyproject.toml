@@ -30,6 +30,7 @@ lint = ["black", "flake8"]
 
 [tool.tox]
 legacy_tox_ini = """
+
 [tox]
 isolated_build = true
 envlist = lint,typecheck,test

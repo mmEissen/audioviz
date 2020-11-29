@@ -85,6 +85,7 @@ def make_computation(ip_address: str, port: int):
         resolution,
         beam_count,
         computations.BeamMasks(leds_per_beam, resolution),
+        computations.Constant(0.5),
         ip_address,
         port,
     )

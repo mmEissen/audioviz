@@ -312,7 +312,8 @@ class Resample(Computation[OneDArray]):
         masked_array.data[...] = self.input_y.value()
         bucket_indexes = np.arange(bucket_count)
         masked_array.mask = (
-            np.digitize(self.input_x.value(), self.sample_points.value()) - 1 != bucket_indexes[:, np.newaxis]
+            np.digitize(self.input_x.value(), self.sample_points.value()) - 1
+            != bucket_indexes[:, np.newaxis]
         )
         return masked_array.max(axis=1).filled(0)
 
@@ -405,6 +406,7 @@ class Star(Computation[None]):
     resolution: Computation[int]
     beams: Computation[int]
     beam_mask: Computation[t.Any]
+    brightness: Computation[float]
     ip_address: str
     port: int
 
@@ -427,11 +429,11 @@ class Star(Computation[None]):
         super().__post_init__()
 
     def _values_to_rgb(self, values):
-        indexes = (np.clip(np.nan_to_num(values), 0, 0.999) * self.resolution.value()).astype(
-            "int"
-        ) + self._index_mask
+        indexes = (
+            np.clip(np.nan_to_num(values), 0, 0.999) * self.resolution.value()
+        ).astype("int") + self._index_mask
         alphas = self.beam_mask.value()[indexes].reshape(-1)
-        return np.transpose(alphas * self._colors)
+        return np.transpose(alphas * self._colors) * self.brightness.value()
 
     def _compute(self) -> None:
         frame = [
