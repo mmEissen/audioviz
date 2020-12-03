@@ -7,7 +7,7 @@ from audioviz import audio_tools, computations, star
 
 
 CALIBRATION_SAMPLES = 100
-CALIBRATION_FACTOR = 1.5
+CALIBRATION_FACTOR = 2
 
 
 def make_computation():
