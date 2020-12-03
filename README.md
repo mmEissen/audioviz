@@ -16,10 +16,14 @@ Requirements on Ubuntu 20 LTS on RaspberyPI 4:
 - poetry
 - pybind11 (from pip)
 
+Pillow needs
+zlib1g-dev libjpeg-dev
+
 These are needed because you will need to build numpy and scipy. 
 
 If you wish to run the monitoring tool on a development machine you will need:
 - libxcb-xinerama0
+
 
 # Protocol
 
