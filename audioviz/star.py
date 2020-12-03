@@ -68,12 +68,17 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
         computations.Linspace(lowest_note, highest_note, half_beam_count_plus1,),
     )
     final = computations.Roll(
-        computations.Mirror(
-            computations.VolumeNormalizer(resampled) * on_toggle,
-        ),
+        computations.Mirror(computations.VolumeNormalizer(resampled) * on_toggle,),
         computations.Constant(16),
     )
     resolution = leds_per_beam * computations.Constant(16)
+
+    return (
+        computations.Star(
+            computations.TestImage(beam_count, leds_per_beam), ip_address, port
+        ),
+        [],
+    )
 
     return (
         computations.Star(

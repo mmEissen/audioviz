@@ -1,6 +1,6 @@
 [[package]]
 name = "airpixel"
-version = "0.9"
+version = "0.10"
 description = "Controll LEDs with arduinoNanoIOT and Python"
 category = "main"
 optional = false
@@ -416,12 +416,12 @@ typecheck = ["mypy"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "a8a6564b20c5dd20494ed9a74820c529347eb891fd2af12cf3aba98f987fef38"
+content-hash = "3b9e444990f8d0625a3be18fd812130acb70756e3ed0d608730ed687f1667e41"
 
 [metadata.files]
 airpixel = [
-    {file = "airpixel-0.9-py3-none-any.whl", hash = "sha256:bff88dc1ae8069b31e140611183cfa7f149b0f42e8a5a523da9bf4e447b010b8"},
-    {file = "airpixel-0.9.tar.gz", hash = "sha256:08f80e37e1badb83f60b5d051f7e464edfc0c3678fd169ca9e63d6ee2ffbabdd"},
+    {file = "airpixel-0.10-py3-none-any.whl", hash = "sha256:d6d3162f988927fa5676cdb5123bc5324bc347b36a422919efd06cc852d5a72f"},
+    {file = "airpixel-0.10.tar.gz", hash = "sha256:58b8fb1fbf25114748473b9a9bed2482d1f2a3d63507901a04b72e51d92c699f"},
 ]
 appdirs = [
     {file = "appdirs-1.4.4-py2.py3-none-any.whl", hash = "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"},

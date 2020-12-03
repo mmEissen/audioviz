@@ -8,6 +8,7 @@ import time
 import typing as t
 import math
 
+from PIL import Image as image, ImageOps as image_ops
 import numpy as np
 from airpixel import client
 from numpy import fft
@@ -461,44 +462,57 @@ class ColorMask(Computation[t.Any]):
 
 
 @computation()
+class TestImage(Computation[image.Image]):
+    width: Computation[int]
+    height: Computation[int]
+    computation_type = ComputationType.DYNAMIC
+
+    def _compute(self) -> image.Image:
+        result = image.new("RGB", (self.width.value(), self.height.value()))
+        pixels = result.load()
+        for x in range(self.width.value()):
+            for y in range(self.height.value()):
+                red = int(round(x / self.width.value() * 255 * 0.3))
+                green = int(round(y / self.height.value() * 255 * 0.3))
+                blue = int(round(255 // 2 * 0))
+                pixels[x, y] = (red, green, blue)
+        return result
+
+
+@computation()
 class Star(Computation[None]):
-    strip_values: Computation[OneDArray]
-    led_per_beam: Computation[int]
-    resolution: Computation[int]
-    beams: Computation[int]
-    beam_mask: Computation[t.Any]
-    brightness: Computation[float]
+    data: Computation[image.Image]
     ip_address: str
     port: int
+    computation_type = ComputationType.DYNAMIC
+    rotation_offset = 2
 
     def __post_init__(self):
         self.client = client.AirClient(
             self.ip_address, int(self.port), client.ColorMethodGRB
         )
-        self._colors = np.transpose(
-            np.array(
-                [np.array([0, 1, 1])] * self.led_per_beam.value() * self.beams.value()
-            )
-        )
-
-        self._index_mask = np.zeros(self.beams.value(), dtype="int")
-        self._index_mask[1::2] = self.resolution.value()
-
-        self._blank_frame = np.zeros(
-            self.beams.value() * self.led_per_beam.value() * 3
-        ).reshape((self.beams.value() * self.led_per_beam.value(), 3))
         super().__post_init__()
 
-    def _values_to_rgb(self, values):
-        indexes = (
-            np.clip(np.nan_to_num(values), 0, 0.999) * self.resolution.value()
-        ).astype("int") + self._index_mask
-        alphas = self.beam_mask.value()[indexes].reshape(-1)
-        return np.transpose(alphas * self._colors) * self.brightness.value()
-
     def _compute(self) -> None:
+        image_ = self.data.value()
+        width = image_.width
+        height = image_.height
+        flipped = image_ops.flip(image_.copy())
+        mask = image.new("L", (width, height))
+        pixels = mask.load()
+        for x in range(width):
+            value = 255 * (x % 2)
+            for y in range(height):
+                pixels[x, y] = value
+        final_image = image_ops.mirror(image.composite(image_, flipped, mask))
+        pixels = final_image.load()
         frame = [
-            client.Pixel(r, g, b)
-            for r, g, b in self._values_to_rgb(self.strip_values.value())
+            client.Pixel(
+                pixels[x % width, y][0] / 255,
+                pixels[x % width, y][1] / 255,
+                pixels[x % width, y][2] / 255,
+            )
+            for x in range(self.rotation_offset, width + self.rotation_offset)
+            for y in range(height)
         ]
         self.client.show_frame(frame)
