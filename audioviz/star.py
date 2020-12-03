@@ -37,7 +37,9 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
     lowest_note = computations.Constant(6.02236781303)
     highest_note = computations.Constant(11.0313565963)
     beam_count = computations.Constant(36)
-    half_beam_count_plus1 = computations.Constant(19)
+    half_beam_count_plus1 = beam_count // computations.Constant(
+        2
+    ) + computations.Constant(1)
     leds_per_beam = computations.Constant(8)
     slice_start = computations.Constant(1)
 

@@ -17,6 +17,8 @@ from audioviz import audio_tools, a_weighting_table
 
 
 _T = t.TypeVar("_T")
+_U = t.TypeVar("_U")
+_V = t.TypeVar("_V")
 
 
 class ComputationCycleError(Exception):
@@ -143,6 +145,21 @@ class Computation(abc.ABC, t.Generic[_T]):
         ]
         return f"{self.__class__.__qualname__}({', '.join(attributes)})"
 
+    def __add__(self, other):
+        return Add(self, other)
+
+    def __sub__(self, other):
+        return Subtract(self, other)
+
+    def __mul__(self, other):
+        return Multiply(self, other)
+
+    def __truediv__(self, other):
+        return Divide(self, other)
+
+    def __floordiv__(self, other):
+        return FloorDivide(self, other)
+
 
 @computation()
 class Constant(Computation[_T]):
@@ -152,6 +169,45 @@ class Constant(Computation[_T]):
 
     def _compute(self) -> _T:
         return self.constant
+
+
+@computation()
+class _Operator(Computation[_T]):
+    left: Computation[_U]
+    right: Computation[_V]
+
+
+@computation()
+class Add(_Operator[_T]):
+    def _compute(self):
+        return self.left.value() + self.right.value()
+
+
+@computation()
+class Subtract(_Operator[_T]):
+    def _compute(self):
+        return self.left.value() - self.right.value()
+
+
+@computation()
+class Multiply(_Operator[_T]):
+    def _compute(self):
+        return self.left.value() * self.right.value()
+
+
+@computation()
+class Divide(_Operator[_T]):
+    def _compute(self):
+        return self.left.value() / self.right.value()
+
+
+@computation()
+class FloorDivide(Computation[_T]):
+    left: Computation[_U]
+    right: Computation[_V]
+
+    def _compute(self):
+        return self.left.value() // self.right.value()
 
 
 @computation()
