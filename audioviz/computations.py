@@ -331,33 +331,6 @@ class ThresholdToggle(Computation[bool]):
 
 
 @computation()
-class Add(Computation[_T]):
-    left_input: Computation[_T]
-    right_input: Computation[_T]
-
-    def _compute(self) -> _T:
-        return self.left_input.value() + self.right_input.value()
-
-
-@computation()
-class Subtract(Computation[_T]):
-    left_input: Computation[_T]
-    right_input: Computation[_T]
-
-    def _compute(self) -> _T:
-        return self.left_input.value() - self.right_input.value()
-
-
-@computation()
-class Divide(Computation[_T]):
-    left_input: Computation[_T]
-    right_input: Computation[_T]
-
-    def _compute(self) -> _T:
-        return self.left_input.value() / self.right_input.value()
-
-
-@computation()
 class Linspace(Computation[OneDArray]):
     start: Computation[float]
     stop: Computation[float]
