@@ -303,15 +303,6 @@ class AWeightingVector(Computation[FrequencySpectrum]):
 
 
 @computation()
-class Multiply(Computation[_T]):
-    left_input: Computation[_T]
-    right_input: Computation[_T]
-
-    def _compute(self) -> _T:
-        return self.left_input.value() * self.right_input.value()
-
-
-@computation()
 class History(Computation[t.List[_T]]):
     input_: Computation[_T]
     size: int

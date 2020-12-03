@@ -55,15 +55,13 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
         computations.Constant(volume_threshold),
     )
 
-    hamming_audio = computations.Multiply(
-        audio_source, computations.HammingWindow(sample_count)
-    )
+    hamming_audio = audio_source * computations.HammingWindow(sample_count)
+
     fft_result = computations.Slice(
-        computations.FastFourierTransform(hamming_audio, sample_delta,), slice_start,
+        computations.FastFourierTransform(hamming_audio, sample_delta), slice_start,
     )
-    a_weighted = computations.Multiply(
-        computations.AWeightingVector(fft_frequencies), fft_result
-    )
+    a_weighted = computations.AWeightingVector(fft_frequencies) * fft_result
+
     resampled = computations.Resample(
         computations.Log2(fft_frequencies),
         a_weighted,
@@ -71,11 +69,11 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
     )
     final = computations.Roll(
         computations.Mirror(
-            computations.Multiply(computations.VolumeNormalizer(resampled), on_toggle,),
+            computations.VolumeNormalizer(resampled) * on_toggle,
         ),
         computations.Constant(16),
     )
-    resolution = computations.Multiply(leds_per_beam, computations.Constant(16))
+    resolution = leds_per_beam * computations.Constant(16)
 
     return (
         computations.Star(
