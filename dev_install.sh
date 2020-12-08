@@ -13,7 +13,7 @@ poetry install --no-dev
 sudo cp -f ./audioviz.service /etc/systemd/system/audioviz.service
 
 sudo systemctl stop audioviz
-poetry run python -m audioviz.calibrate
+# poetry run python -m audioviz.calibrate
 
 sudo systemctl daemon-reload
 sudo systemctl enable audioviz

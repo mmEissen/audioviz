@@ -4,7 +4,7 @@ monitor:
     streams:
         # - name: audio_in
         # - name: hamming_audio
-        # - name: fft
-        # - name: a_weighted
+        - name: fft_result
+        - name: a_weighted
         - name: resampled
         # - name: final

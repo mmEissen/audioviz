@@ -8,7 +8,7 @@ import time
 import typing as t
 import math
 
-from PIL import Image as image, ImageOps as image_ops
+from PIL import Image as image, ImageOps as image_ops, ImageDraw as image_draw
 import numpy as np
 from airpixel import client
 from numpy import fft
@@ -480,12 +480,79 @@ class TestImage(Computation[image.Image]):
 
 
 @computation()
+class Lines(Computation[image.Image]):
+    data: Computation[OneDArray]
+    height: Computation[int]
+
+    def _compute(self) -> image.Image:
+        result = image.new("L", (len(self.data.value()), self.height.value()))
+        draw = image_draw.Draw(result)
+        for x, value in enumerate(self.data.value()):
+            draw.line(
+                [(x, -1), (x, value * (self.height.value() + 1) - 1)], width=1, fill=255
+            )
+        return result
+
+
+@computation()
+class MirrorOnCenter(Computation[image.Image]):
+    input_: Computation[image.Image]
+
+    def _compute(self) -> image.Image:
+        input_ = self.input_.value()
+        result = image.new(input_.mode, (input_.width * 2, input_.height))
+        result.paste(input_, (0, 0))
+        result.paste(image_ops.mirror(input_), (input_.width, 0))
+        return result
+
+
+@computation()
+class Composite(Computation[image.Image]):
+    first: Computation[image.Image]
+    second: Computation[image.Image]
+    mask: Computation[image.Image]
+
+    def _compute(self) -> image.Image:
+        return image.composite(
+            self.first.value(), self.second.value(), self.mask.value()
+        )
+
+
+@computation()
+class FlatRGBImage(Computation[image.Image]):
+    width: Computation[int]
+    height: Computation[int]
+    red: Computation[int]
+    green: Computation[int]
+    blue: Computation[int]
+
+    def _compute(self) -> image.Image:
+        return image.new(
+            "RGB",
+            (self.width.value(), self.height.value()),
+            (self.red.value(), self.green.value(), self.blue.value()),
+        )
+
+
+@computation()
+class FlatLImage(Computation[image.Image]):
+    width: Computation[int]
+    height: Computation[int]
+    lightness: Computation[int]
+
+    def _compute(self) -> image.Image:
+        return image.new(
+            "L", (self.width.value(), self.height.value()), self.lightness.value(),
+        )
+
+
+@computation()
 class Star(Computation[None]):
     data: Computation[image.Image]
     ip_address: str
     port: int
     computation_type = ComputationType.DYNAMIC
-    rotation_offset = 2
+    ROTATION_OFFSET: t.ClassVar[int] = 2
 
     def __post_init__(self):
         self.client = client.AirClient(
@@ -512,7 +579,7 @@ class Star(Computation[None]):
                 pixels[x % width, y][1] / 255,
                 pixels[x % width, y][2] / 255,
             )
-            for x in range(self.rotation_offset, width + self.rotation_offset)
+            for x in range(self.ROTATION_OFFSET, width + self.ROTATION_OFFSET)
             for y in range(height)
         ]
         self.client.show_frame(frame)

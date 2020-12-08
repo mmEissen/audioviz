@@ -9,49 +9,49 @@
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 190)">
 <title>Computations</title>
 <polygon fill="white" stroke="transparent" points="-4,4 -4,-190 379.5,-190 379.5,4 -4,4"/>
-<!-- 140619820012640 -->
+<!-- 140089343490800 -->
 <g id="node1" class="node">
-<title>140619820012640</title>
+<title>140089343490800</title>
 <polygon fill="yellow" stroke="black" points="306,-38 73,-38 73,0 306,0 306,-38"/>
 <text text-anchor="middle" x="189.5" y="-22.8" font-family="Times,serif" font-size="14.00">Star(ip_address=, port=1234)</text>
-<text text-anchor="middle" x="189.5" y="-7.8" font-family="Times,serif" font-size="14.00">t=1.19ms</text>
+<text text-anchor="middle" x="189.5" y="-7.8" font-family="Times,serif" font-size="14.00">t=3.76ms</text>
 </g>
-<!-- 140619820012496 -->
+<!-- 140089343490656 -->
 <g id="node2" class="node">
-<title>140619820012496</title>
+<title>140089343490656</title>
 <polygon fill="yellow" stroke="black" points="240,-112 139,-112 139,-74 240,-74 240,-112"/>
 <text text-anchor="middle" x="189.5" y="-96.8" font-family="Times,serif" font-size="14.00">TestImage()</text>
 <text text-anchor="middle" x="189.5" y="-81.8" font-family="Times,serif" font-size="14.00">t=1.14ms</text>
 </g>
-<!-- 140619820012496&#45;&gt;140619820012640 -->
+<!-- 140089343490656&#45;&gt;140089343490800 -->
 <g id="edge1" class="edge">
-<title>140619820012496&#45;&gt;140619820012640</title>
+<title>140089343490656&#45;&gt;140089343490800</title>
 <path fill="none" stroke="black" d="M189.5,-73.94C189.5,-73.94 189.5,-48.25 189.5,-48.25"/>
 <polygon fill="black" stroke="black" points="193,-48.25 189.5,-38.25 186,-48.25 193,-48.25"/>
 </g>
-<!-- 140619819939296 -->
+<!-- 140089365863968 -->
 <g id="node3" class="node">
-<title>140619819939296</title>
+<title>140089365863968</title>
 <polygon fill="white" stroke="black" points="183,-186 0,-186 0,-148 183,-148 183,-186"/>
 <text text-anchor="middle" x="91.5" y="-170.8" font-family="Times,serif" font-size="14.00">Constant(constant=36)</text>
 <text text-anchor="middle" x="91.5" y="-155.8" font-family="Times,serif" font-size="14.00">t=0.00ms</text>
 </g>
-<!-- 140619819939296&#45;&gt;140619820012496 -->
+<!-- 140089365863968&#45;&gt;140089343490656 -->
 <g id="edge2" class="edge">
-<title>140619819939296&#45;&gt;140619820012496</title>
+<title>140089365863968&#45;&gt;140089343490656</title>
 <path fill="none" stroke="black" d="M161,-147.94C161,-147.94 161,-122.25 161,-122.25"/>
 <polygon fill="black" stroke="black" points="164.5,-122.25 161,-112.25 157.5,-122.25 164.5,-122.25"/>
 </g>
-<!-- 140619819940016 -->
+<!-- 140089365864304 -->
 <g id="node4" class="node">
-<title>140619819940016</title>
+<title>140089365864304</title>
 <polygon fill="white" stroke="black" points="375.5,-186 201.5,-186 201.5,-148 375.5,-148 375.5,-186"/>
 <text text-anchor="middle" x="288.5" y="-170.8" font-family="Times,serif" font-size="14.00">Constant(constant=8)</text>
 <text text-anchor="middle" x="288.5" y="-155.8" font-family="Times,serif" font-size="14.00">t=0.00ms</text>
 </g>
-<!-- 140619819940016&#45;&gt;140619820012496 -->
+<!-- 140089365864304&#45;&gt;140089343490656 -->
 <g id="edge3" class="edge">
-<title>140619819940016&#45;&gt;140619820012496</title>
+<title>140089365864304&#45;&gt;140089343490656</title>
 <path fill="none" stroke="black" d="M220.75,-147.94C220.75,-147.94 220.75,-122.25 220.75,-122.25"/>
 <polygon fill="black" stroke="black" points="224.25,-122.25 220.75,-112.25 217.25,-122.25 224.25,-122.25"/>
 </g>

@@ -5,3 +5,4 @@ ring_client/tests/audio_samples/
 .venv
 dist
 *.egg-info/**
+.calibration

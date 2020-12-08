@@ -11,7 +11,7 @@ CALIBRATION_FILE = ".calibration"
 
 SAMPLE_RATE = 44100
 
-WINDOW_SIZE_SEC = 0.05
+WINDOW_SIZE_SEC = 0.06
 
 THRESHOLD_HISTORY = 6
 
@@ -35,12 +35,17 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
     )
     sample_delta = computations.Constant(audio_input.sample_delta)
     lowest_note = computations.Constant(6.02236781303)
-    highest_note = computations.Constant(11.0313565963)
+    highest_note = computations.Constant(12.0313565963)
+
     beam_count = computations.Constant(36)
-    half_beam_count_plus1 = beam_count // computations.Constant(
-        2
-    ) + computations.Constant(1)
+    half_beam_count = beam_count // computations.Constant(2)
+    half_beam_count_plus1 = half_beam_count + computations.Constant(1)
+
     leds_per_beam = computations.Constant(8)
+
+    max_color = computations.Constant(255)
+    min_color = computations.Constant(0)
+
     slice_start = computations.Constant(1)
 
     fft_frequencies = computations.Slice(
@@ -67,37 +72,34 @@ def make_computation(ip_address: str, port: int, volume_threshold: float):
         a_weighted,
         computations.Linspace(lowest_note, highest_note, half_beam_count_plus1,),
     )
-    final = computations.Roll(
-        computations.Mirror(computations.VolumeNormalizer(resampled) * on_toggle,),
-        computations.Constant(16),
-    )
-    resolution = leds_per_beam * computations.Constant(16)
 
-    return (
-        computations.Star(
-            computations.TestImage(beam_count, leds_per_beam), ip_address, port
-        ),
-        [],
+    intensities = computations.VolumeNormalizer(resampled)
+
+    black = computations.FlatRGBImage(
+        half_beam_count, leds_per_beam, min_color, min_color, min_color
+    )
+    color = computations.FlatRGBImage(
+        half_beam_count, leds_per_beam, max_color, max_color, max_color
     )
 
+    lines = computations.Lines(intensities, leds_per_beam)
+
+    brightness = computations.FlatLImage(
+        half_beam_count, leds_per_beam, on_toggle * computations.Constant(120)
+    )
+
+    composite = computations.Composite(
+        computations.Composite(color, black, lines), black, brightness
+    )
+
     return (
-        computations.Star(
-            final,
-            leds_per_beam,
-            resolution,
-            beam_count,
-            computations.BeamMasks(leds_per_beam, resolution),
-            computations.Constant(0.5),
-            ip_address,
-            port,
-        ),
+        computations.Star(computations.MirrorOnCenter(composite), ip_address, port),
         make_monitors(
             audio_source=audio_source,
             hamming_audio=hamming_audio,
             fft_result=fft_result,
             a_weighted=a_weighted,
             resampled=resampled,
-            final=final,
         ),
     )
 
