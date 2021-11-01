@@ -1,30 +1,21 @@
 network:
-    ethernets:
-        eth0:
-            dhcp4: true
-            match:
-                driver: bcmgenet smsc95xx lan78xx
-            optional: true
-            set-name: eth0
-    version: 2
-    wifis:
-        wlan0:
-            match:
-                name: wlan*
-            access-points:
-                AIRPIXEL:
-                    mode: ap
-                    password: 34D6MasF8B2M2ws8
-            addresses:
-            - 192.168.4.1/24
-            dhcp4: true
-            renderer: NetworkManager
-        debug_wifi:
-            renderer: NetworkManager
-            match:
-                name: wlxd*
-            access-points:
-                "Tomorrow's Flowers":
-                    password: "If you buy me beers"
-            dhcp4: true
-            optional: true
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eth0:
+      dhcp4: true
+      optional: true
+  wifis:
+    wlan0:
+      dhcp4: true
+      access-points:
+        AIRPIXEL:
+          password: 34D6MasF8B2M2ws8
+          mode: ap
+    wlan1:
+      dhcp4: true
+      optional: true
+      access-points:
+        "Tomorrow's Flowers":
+          password: "If you buy me beers"
+          

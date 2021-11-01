@@ -10,7 +10,6 @@ from airpixel import client as air_client
 import airpixel.monitoring
 from numpy.fft import rfft as fourier_transform, rfftfreq
 from pyPiper import Node, Pipeline
-from scipy import ndimage
 
 from audioviz import a_weighting_table, audio_tools
 
@@ -136,15 +135,6 @@ class AWeighting(PlottableNode):
 
     def run(self, data):
         self.emit(data * self.weights)
-
-
-class Gaussian(PlottableNode):
-    def setup(self, sigma, monitor_client=None):
-        self._sigma = sigma
-        super().setup(monitor_client)
-
-    def run(self, data):
-        self.emit(ndimage.gaussian_filter(data, sigma=self._sigma))
 
 class Square(PlottableNode):
     def run(self, data):

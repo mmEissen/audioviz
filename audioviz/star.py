@@ -62,7 +62,6 @@ def main() -> None:
         #     monitor_client=mon_client,
         # )
         | nodes.ExponentialSubsampler("sampled", start_frequency=65, stop_frequency=1046, samples=18, frequencies=fft_node.fourier_frequencies, monitor_client=mon_client)
-        # | nodes.Gaussian("smoothed", sigma=0.5, monitor_client=mon_client)
         # | nodes.FoldingNode("folded", samples_per_octave=BEAMS, monitor_client=mon_client)
         # | nodes.SumMatrixVertical("sum", monitor_client=mon_client)
         # | nodes.MaxMatrixVertical("max", monitor_client=mon_client)
