@@ -48,7 +48,7 @@ class AudioInput(LoopingThread):
 
     def __init__(
         self,
-        device = "hw:CARD=Loopback,DEV=1",
+        device = "default",
         sample_rate = 22050,
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
