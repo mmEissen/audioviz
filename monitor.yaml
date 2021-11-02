@@ -3,13 +3,13 @@ monitor:
     port: 50001
     streams:
         - name: mic
-        # - name: fft
+        - name: fft
         # - name: a-weighting
-        # - name: sampled
+        - name: sampled
         # - name: smoothed
         # - name: folded
         # - name: max
-        # - name: normalized
+        - name: normalized
         # - name: mirrored
         # - name: square
         # - name: log

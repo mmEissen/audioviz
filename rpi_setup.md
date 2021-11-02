@@ -14,14 +14,15 @@ sudo usermod -a -G audio moritz
 ## Loopback devices (Audio)
 
 ```
-sudo modprobe snd-aloop
+sudo apt install pulseaudio
+sudo adduser moritz pulse-access 
+sudo adduser moritz pulse
 ```
-```
-sudo nano /etc/modules
-```
-```
-snd-aloop
-```
+
+
+systemctl daemon-reload
+systemctl enable pulseaudio.service
+
 
 ```
 nano /etc/asound.conf
