@@ -1,10 +1,10 @@
 framework:
-    address: "0.0.0.0"
-    port: 50000
-    udp_port: 50000
-    devices:
-        - device_id: "ethereality"
-          command_template: "python -m audioviz.star {ip_address} {port}"
+  address: "0.0.0.0"
+  port: 50000
+  udp_port: 50000
+  devices:
+    - device_id: "ethereality"
+      command_template: "PULSE_SOURCE='alsa_output.platform-bcm2835_audio.analog-stereo.monitor' python -m audioviz.star {ip_address} {port}"
 
 monitoring:
   address: "0.0.0.0"
