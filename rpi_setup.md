@@ -11,25 +11,95 @@ add user to audio group
 sudo usermod -a -G audio moritz
 ```
 
-Find out which audio device is usb:
+## Loopback devices (Audio)
+
 ```
-aplay -l
+sudo modprobe snd-aloop
+```
+```
+sudo nano /etc/modules
+```
+```
+snd-aloop
 ```
 
-edit default audio device:
 ```
-sudo nano /usr/share/alsa/alsa.conf
-```
-Scroll and find the following two lines:
-```
-defaults.ctl.card 0
-defaults.pcm.card 0
+nano ~/.asoundrc
 ```
 
-Change to (where 2 is the usb audio device)
 ```
-defaults.ctl.card 2
-defaults.pcm.card 2
+pcm.!default {
+  type asym
+  playback.pcm "LoopAndReal"
+  #capture.pcm "looprec"
+  capture.pcm "hw:1,0"
+}
+
+pcm.looprec {
+    type hw
+    card "Loopback"
+    device 1
+    subdevice 0
+}
+
+pcm.LoopAndReal {
+  type plug
+  slave.pcm mdev
+  route_policy "duplicate"
+}
+
+pcm.mdev {
+  type multi
+  slaves.a.pcm pcm.MixReale
+  slaves.a.channels 2
+  slaves.b.pcm pcm.MixLoopback
+  slaves.b.channels 2
+  bindings.0.slave a
+  bindings.0.channel 0
+  bindings.1.slave a
+  bindings.1.channel 1
+  bindings.2.slave b
+  bindings.2.channel 0
+  bindings.3.slave b
+  bindings.3.channel 1
+}
+
+pcm.MixReale {
+  type dmix
+  ipc_key 1024
+  slave {
+    pcm "hw:0,0"
+    rate 48000
+    #rate 44100
+    periods 128
+    period_time 0
+    period_size 1024 # must be power of 2
+    buffer_size 8192
+  }
+}
+
+pcm.MixLoopback {
+  type dmix
+  ipc_key 1025
+  slave {
+    pcm "hw:Loopback,0,0"
+    rate 48000
+    #rate 44100
+    periods 128
+    period_time 0
+    period_size 1024 # must be power of 2
+    buffer_size 8192
+  }
+}
+```
+
+```
+sudo nano /etc/modprobe.d/alsa-base.conf
+```
+add
+```
+options snd_bcm2835 index=0,1 id=b1,Headphones
+options snd_aloop index=2
 ```
 
 
