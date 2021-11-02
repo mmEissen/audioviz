@@ -13,6 +13,8 @@ import numpy
 MS_IN_SECOND = 1000
 SECONDS_IN_MINUTE = 60
 
+DEVICE = "pulse"
+
 
 class AudioError(Exception):
     pass
@@ -48,7 +50,6 @@ class AudioInput(LoopingThread):
 
     def __init__(
         self,
-        device = "default",
         sample_rate = 22050,
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
@@ -62,8 +63,8 @@ class AudioInput(LoopingThread):
         self._buffer_lock = threading.Lock()
 
         self._clear_buffer()
-
-        self._mic = alsa.PCM(type=alsa.PCM_CAPTURE, mode=alsa.PCM_NORMAL, device=device)
+        print(alsa.pcms(alsa.PCM_CAPTURE))
+        self._mic = alsa.PCM(type=alsa.PCM_CAPTURE, mode=alsa.PCM_NORMAL, device=DEVICE)
         self._mic.setperiodsize(period_size)
         self._mic.setrate(sample_rate)
         self._mic.setformat(alsa.PCM_FORMAT_S32_LE)
