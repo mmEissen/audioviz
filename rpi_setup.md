@@ -19,9 +19,27 @@ sudo adduser moritz pulse-access
 sudo adduser moritz pulse
 ```
 
+/etc/systemd/system/pulseaudio.service
+```
+[Unit]
+Description=Pulse Audio
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/pulseaudio --system --disallow-exit --disable-shm --exit-idle-time=-1
+
+[Install]
+WantedBy=multi-user.target
+```
 
 systemctl daemon-reload
 systemctl enable pulseaudio.service
+
+
+/etc/pulse/system.pa
+```
+load-module module-native-protocol-unix auth-anonymous=1
+```
 
 
 ```
@@ -48,6 +66,14 @@ add
 options snd_bcm2835 index=0,1 id=b1,Headphones
 options snd_aloop index=2
 ```
+
+
+setting gpu_mem=32 in /boot/config.txt
+
+sudo pico /boot/cmdline.txt
+Press the End key on your keyboard, then the space key, then paste the following text:
+
+sdhci-bcm2708.missing_status=0 sdhci-bcm2708.sync_after_dma=0
 
 
 ## Raspian
