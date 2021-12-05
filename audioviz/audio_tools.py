@@ -61,7 +61,7 @@ class AudioInput(LoopingThread):
         sample_rate = 22050,
         period_size = 1024,
         buffer_size = MS_IN_SECOND * 1,
-        max_loop_frequency = 1 / 60,
+        max_loop_frequency = 1 / 1,
     ) -> None:
         super().__init__(name="audio-capture-thread", max_loop_frequency=max_loop_frequency)
         self.sample_rate = sample_rate

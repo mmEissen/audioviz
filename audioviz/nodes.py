@@ -56,7 +56,7 @@ class PlottableNode(Node):
 
 
 class AudioGenerator(PlottableNode):
-    def setup(self, audio_input, samples, monitor_client=None, time_delta=0.05):
+    def setup(self, audio_input, samples, monitor_client=None, time_delta=1):
         super().setup(monitor_client)
         self._samples = samples
         self._input_device = audio_input
