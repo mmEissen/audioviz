@@ -1,17 +1,13 @@
 import time
-import threading
 import math
-from functools import reduce
 
 import numpy as np
 
-import io
 from airpixel import client as air_client
-import airpixel.monitoring
 from numpy.fft import rfft as fourier_transform, rfftfreq
-from pyPiper import Node, Pipeline
+from pyPiper import Node
 
-from audioviz import a_weighting_table, audio_tools
+from audioviz import a_weighting_table
 
 
 class ContiniuousVolumeNormalizer:
@@ -60,7 +56,7 @@ class PlottableNode(Node):
 
 
 class AudioGenerator(PlottableNode):
-    def setup(self, audio_input, samples, monitor_client=None, time_delta=0.033):
+    def setup(self, audio_input, samples, monitor_client=None, time_delta=1):
         super().setup(monitor_client)
         self._samples = samples
         self._input_device = audio_input
