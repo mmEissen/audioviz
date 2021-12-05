@@ -60,14 +60,19 @@ class PlottableNode(Node):
 
 
 class AudioGenerator(PlottableNode):
-    def setup(self, audio_input, samples, monitor_client=None):
+    def setup(self, audio_input, samples, monitor_client=None, time_delta=0.033):
         super().setup(monitor_client)
         self._samples = samples
         self._input_device = audio_input
+        self._time_delta = time_delta
+        self._last_time = 0
 
     def run(self, data):
+        wait = max(0, self._time_delta - (time.time() - self._last_time))
+        time.sleep(wait)
         samples = np.array(self._input_device.get_samples(self._samples))
         self.emit(samples)
+        self._last_time = time.time()
 
 
 class Hamming(PlottableNode):
