@@ -68,7 +68,6 @@ class AudioGenerator(PlottableNode):
     def run(self, data):
         samples = np.array(self._input_device.get_samples(self._samples))
         self.emit(samples)
-        self._last_time = time.time()
 
 
 class Hamming(PlottableNode):
