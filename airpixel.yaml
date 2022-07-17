@@ -4,7 +4,7 @@ framework:
   udp_port: 50000
   devices:
     - device_id: "ethereality"
-      command_template: "/home/moritz/audioviz/run_star.sh {ip_address} {port}"
+      command_template: "python -m audioviz.star {ip_address} {port}"
 
 monitoring:
   address: "0.0.0.0"

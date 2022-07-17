@@ -66,7 +66,7 @@ class AudioGenerator(PlottableNode):
     def run(self, data):
         wait = max(0, self._time_delta - (time.time() - self._last_time))
         time.sleep(wait)
-        samples = np.array(self._input_device.get_samples(self._samples))
+        samples = np.array(self._input_device.get_window(self._samples))
         self.emit(samples)
         self._last_time = time.time()
 

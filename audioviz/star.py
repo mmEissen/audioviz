@@ -5,7 +5,8 @@ import os
 from airpixel import client as air_client
 from pyPiper import Pipeline
 
-from audioviz import audio_tools, nodes
+import mupa_client
+from audioviz import nodes
 
 
 BEAMS = 36
@@ -34,12 +35,12 @@ def main() -> None:
 
     mon_client = air_client.MonitorClient("monitoring_uds")
 
-    audio_input = audio_tools.AudioInput(sample_rate=SAMPLE_RATE)
-    audio_input.start()
+    audio_input = mupa_client.Client()
+    audio_input.connect()
 
-    samples = audio_input.seconds_to_samples(WINDOW_SIZE_SEC)
+    samples = int(audio_input.get_sample_rate() * WINDOW_SIZE_SEC)
     fft_node = nodes.FastFourierTransform(
-        "fft", samples=samples, sample_delta=audio_input.sample_delta, monitor_client=mon_client
+        "fft", samples=samples, sample_delta=1/audio_input.get_sample_rate(), monitor_client=mon_client
     )
 
     pipeline = Pipeline(
